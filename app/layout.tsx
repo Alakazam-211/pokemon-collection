@@ -29,13 +29,12 @@ export default function RootLayout({
       </head>
       <body className={`${fredoka.variable} antialiased`}>
         <Navigation
-          logo="/logo.svg"
-          logoAlt="Pokemon Collection Logo"
+          textLogo="Kyle's Pokemon"
           links={[
             { href: '/', label: 'Home' },
             { href: '/collection', label: 'Collection' },
+            { href: '/tcg-collection', label: 'TCG Sync' },
           ]}
-          cta={{ href: '/collection', label: 'Explore Collection' }}
           primaryColor="rgba(59, 76, 202, 0.95)"
         />
         <div className="pt-24 pb-8">

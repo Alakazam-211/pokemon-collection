@@ -7,6 +7,11 @@ import { PokemonCard } from '@/types/pokemon';
 
 export async function getAllCards(): Promise<PokemonCard[]> {
   try {
+    // Check if database connection is configured
+    if (!process.env.POSTGRES_URL && !process.env.DATABASE_URL) {
+      throw new Error('Database connection not configured. Please set POSTGRES_URL or DATABASE_URL environment variable.');
+    }
+
     const { rows } = await sql`
       SELECT 
         id,
@@ -18,6 +23,8 @@ export async function getAllCards(): Promise<PokemonCard[]> {
         value,
         quantity,
         image_url as "imageUrl",
+        is_psa as "isPsa",
+        psa_rating as "psaRating",
         created_at as "createdAt",
         updated_at as "updatedAt"
       FROM pokemon_cards
@@ -34,9 +41,22 @@ export async function getAllCards(): Promise<PokemonCard[]> {
       value: parseFloat(row.value),
       quantity: row.quantity,
       imageUrl: row.imageUrl || undefined,
+      isPsa: row.isPsa || false,
+      psaRating: row.psaRating || undefined,
     }));
   } catch (error) {
     console.error('Error fetching cards:', error);
+    
+    // Provide more helpful error messages
+    if (error instanceof Error) {
+      if (error.message.includes('relation') || error.message.includes('does not exist')) {
+        throw new Error('Database table "pokemon_cards" does not exist. Please run the migrations to create the table.');
+      }
+      if (error.message.includes('connection') || error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
+        throw new Error('Cannot connect to database. Please check your POSTGRES_URL environment variable.');
+      }
+    }
+    
     throw error;
   }
 }
@@ -54,6 +74,8 @@ export async function getCardById(id: string): Promise<PokemonCard | null> {
         value,
         quantity,
         image_url as "imageUrl",
+        is_psa as "isPsa",
+        psa_rating as "psaRating",
         created_at as "createdAt",
         updated_at as "updatedAt"
       FROM pokemon_cards
@@ -75,6 +97,8 @@ export async function getCardById(id: string): Promise<PokemonCard | null> {
       value: parseFloat(row.value),
       quantity: row.quantity,
       imageUrl: row.imageUrl || undefined,
+      isPsa: row.isPsa || false,
+      psaRating: row.psaRating || undefined,
     };
   } catch (error) {
     console.error('Error fetching card:', error);
@@ -93,7 +117,9 @@ export async function createCard(card: Omit<PokemonCard, 'id'>): Promise<Pokemon
         condition,
         value,
         quantity,
-        image_url
+        image_url,
+        is_psa,
+        psa_rating
       )
       VALUES (
         ${card.name},
@@ -103,7 +129,9 @@ export async function createCard(card: Omit<PokemonCard, 'id'>): Promise<Pokemon
         ${card.condition},
         ${card.value},
         ${card.quantity || 1},
-        ${card.imageUrl || null}
+        ${card.imageUrl || null},
+        ${card.isPsa || false},
+        ${card.psaRating || null}
       )
       RETURNING 
         id,
@@ -115,6 +143,8 @@ export async function createCard(card: Omit<PokemonCard, 'id'>): Promise<Pokemon
         value,
         quantity,
         image_url as "imageUrl",
+        is_psa as "isPsa",
+        psa_rating as "psaRating",
         created_at as "createdAt",
         updated_at as "updatedAt"
     `;
@@ -130,6 +160,8 @@ export async function createCard(card: Omit<PokemonCard, 'id'>): Promise<Pokemon
       value: parseFloat(row.value),
       quantity: row.quantity,
       imageUrl: row.imageUrl || undefined,
+      isPsa: row.isPsa || false,
+      psaRating: row.psaRating || undefined,
     };
   } catch (error) {
     console.error('Error creating card:', error);
@@ -178,6 +210,14 @@ export async function updateCard(
       updateFields.push(`image_url = $${paramIndex++}`);
       values.push(updates.imageUrl || null);
     }
+    if (updates.isPsa !== undefined) {
+      updateFields.push(`is_psa = $${paramIndex++}`);
+      values.push(updates.isPsa);
+    }
+    if (updates.psaRating !== undefined) {
+      updateFields.push(`psa_rating = $${paramIndex++}`);
+      values.push(updates.psaRating || null);
+    }
 
     if (updateFields.length === 0) {
       // No updates, just return the existing card
@@ -203,6 +243,8 @@ export async function updateCard(
         value,
         quantity,
         image_url as "imageUrl",
+        is_psa as "isPsa",
+        psa_rating as "psaRating",
         created_at as "createdAt",
         updated_at as "updatedAt"
     `;
@@ -224,6 +266,8 @@ export async function updateCard(
       value: parseFloat(row.value),
       quantity: row.quantity,
       imageUrl: row.imageUrl || undefined,
+      isPsa: row.isPsa || false,
+      psaRating: row.psaRating || undefined,
     };
   } catch (error) {
     console.error('Error updating card:', error);

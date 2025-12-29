@@ -155,8 +155,8 @@ export default function SyncCatalogButton() {
             </div>
           )}
 
-          {/* Status Details */}
-          {(isRunning || isCompleted || hasError) && (
+          {/* Status Details - Only show when running or completed, not on error */}
+          {(isRunning || isCompleted) && (
             <GlassCard className="p-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
@@ -164,7 +164,6 @@ export default function SyncCatalogButton() {
                   <div className={`font-semibold ${
                     isRunning ? 'text-blue-600' :
                     isCompleted ? 'text-green-600' :
-                    hasError ? 'text-red-600' :
                     'text-[var(--glass-black-dark)]'
                   }`}>
                     {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
@@ -193,17 +192,6 @@ export default function SyncCatalogButton() {
               {status.totalPages > 0 && (
                 <div className="mt-3 text-sm text-[var(--glass-black-dark)]/70">
                   Page {status.currentPage} of {status.totalPages}
-                  {status.errors > 0 && (
-                    <span className="ml-4 text-red-600">
-                      {status.errors} error{status.errors !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {status.message && (
-                <div className="mt-2 text-sm text-[var(--glass-black-dark)]">
-                  {status.message}
                 </div>
               )}
             </GlassCard>
@@ -217,18 +205,6 @@ export default function SyncCatalogButton() {
               </div>
               <div className="text-sm text-green-700 mt-1">
                 Your catalog now has {status.cardsProcessed.toLocaleString()} cards. Searches will be instant!
-              </div>
-            </GlassCard>
-          )}
-
-          {/* Error Message */}
-          {hasError && (
-            <GlassCard className="p-4 bg-red-500/20 border-red-400/50">
-              <div className="text-red-800 font-semibold">
-                ❌ Sync failed
-              </div>
-              <div className="text-sm text-red-700 mt-1">
-                {status.message}
               </div>
             </GlassCard>
           )}

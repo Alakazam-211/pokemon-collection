@@ -117,13 +117,13 @@ export default function CardSearch({ onSelectCard, onClose }: CardSearchProps) {
       </div>
 
       {showResults && results.length > 0 && (
-        <GlassCard className="absolute z-50 w-full mt-1 p-0 max-h-96 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 max-h-96 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200">
           {results.map((card) => (
             <button
               key={card.id}
               type="button"
               onClick={() => handleSelectCard(card)}
-              className="w-full px-4 py-3 text-left hover:bg-white/20 border-b border-white/20 last:border-b-0 flex items-center gap-3 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-3 transition-colors"
             >
               {card.images?.small && (
                 <img
@@ -154,13 +154,13 @@ export default function CardSearch({ onSelectCard, onClose }: CardSearchProps) {
               </div>
             </button>
           ))}
-        </GlassCard>
+        </div>
       )}
 
       {showResults && searchQuery.length >= 2 && !loading && results.length === 0 && (
-        <GlassCard className="absolute z-50 w-full mt-1 p-4 text-center text-[var(--glass-black-dark)]/70">
+        <div className="absolute z-50 w-full mt-1 p-4 text-center text-[var(--glass-black-dark)]/70 bg-white rounded-xl shadow-xl border border-gray-200">
           No cards found. Try a different search term.
-        </GlassCard>
+        </div>
       )}
     </div>
   );

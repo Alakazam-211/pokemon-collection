@@ -5,7 +5,6 @@ import { PokemonCard, CollectionStats } from "@/types/pokemon";
 import AddCardForm from "@/components/AddCardForm";
 import CardList from "@/components/CardList";
 import CollectionStatsDisplay from "@/components/CollectionStatsDisplay";
-import SyncCatalogButton from "@/components/SyncCatalogButton";
 import GlassCard from "@/components/GlassCard";
 import GlassButton from "@/components/GlassButton";
 
@@ -30,13 +29,15 @@ export default function Home() {
       setError(null);
       const response = await fetch("/api/cards");
       if (!response.ok) {
-        throw new Error("Failed to fetch cards");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || "Failed to fetch cards";
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       setCards(data);
     } catch (err) {
       console.error("Error fetching cards:", err);
-      setError("Failed to load cards. Please check your database connection.");
+      setError(err instanceof Error ? err.message : "Failed to load cards. Please check your database connection.");
     } finally {
       setLoading(false);
     }
@@ -87,13 +88,15 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete card");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete card");
       }
 
-      setCards(cards.filter((card) => card.id !== id));
+      // Use functional update to ensure we're working with latest state
+      setCards((prevCards) => prevCards.filter((card) => card.id !== id));
     } catch (err) {
       console.error("Error deleting card:", err);
-      setError("Failed to delete card");
+      setError(err instanceof Error ? err.message : "Failed to delete card");
     }
   };
 
@@ -154,8 +157,6 @@ export default function Home() {
         )}
 
         <CollectionStatsDisplay stats={stats} />
-
-        <SyncCatalogButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           <GlassCard className="p-6">

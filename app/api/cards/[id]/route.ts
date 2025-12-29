@@ -45,6 +45,10 @@ export async function PUT(
     if (body.value !== undefined) updates.value = parseFloat(body.value);
     if (body.quantity !== undefined) updates.quantity = parseInt(body.quantity);
     if (body.imageUrl !== undefined) updates.imageUrl = body.imageUrl;
+    if (body.isPsa !== undefined) updates.isPsa = body.isPsa;
+    if (body.psaRating !== undefined) {
+      updates.psaRating = body.isPsa && body.psaRating ? parseInt(body.psaRating) : undefined;
+    }
 
     const updatedCard = await updateCard(id, updates);
     return NextResponse.json(updatedCard);

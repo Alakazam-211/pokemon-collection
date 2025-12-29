@@ -8,8 +8,20 @@ export async function GET() {
     return NextResponse.json(cards);
   } catch (error) {
     console.error('Error fetching cards:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isDatabaseError = errorMessage.includes('relation') || 
+                           errorMessage.includes('does not exist') ||
+                           errorMessage.includes('connection') ||
+                           errorMessage.includes('ENOTFOUND') ||
+                           errorMessage.includes('ECONNREFUSED');
+    
     return NextResponse.json(
-      { error: 'Failed to fetch cards' },
+      { 
+        error: 'Failed to fetch cards',
+        details: isDatabaseError 
+          ? 'Database connection error. Please check your POSTGRES_URL environment variable and ensure the database tables are created.'
+          : errorMessage
+      },
       { status: 500 }
     );
   }
@@ -36,6 +48,8 @@ export async function POST(request: NextRequest) {
       value: parseFloat(body.value),
       quantity: parseInt(body.quantity) || 1,
       imageUrl: body.imageUrl || undefined,
+      isPsa: body.isPsa || false,
+      psaRating: body.isPsa && body.psaRating ? parseInt(body.psaRating) : undefined,
     };
 
     const newCard = await createCard(cardData);

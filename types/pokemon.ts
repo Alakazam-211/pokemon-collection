@@ -8,6 +8,8 @@ export interface PokemonCard {
   value: number;
   quantity: number;
   imageUrl?: string;
+  isPsa?: boolean;
+  psaRating?: number; // 1-10
 }
 
 export interface CollectionStats {

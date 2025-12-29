@@ -22,13 +22,15 @@ export default function CollectionExplorer() {
       setError(null);
       const response = await fetch("/api/cards");
       if (!response.ok) {
-        throw new Error("Failed to fetch cards");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || "Failed to fetch cards";
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       setCards(data);
     } catch (err) {
       console.error("Error fetching cards:", err);
-      setError("Failed to load cards. Please check your database connection.");
+      setError(err instanceof Error ? err.message : "Failed to load cards. Please check your database connection.");
     } finally {
       setLoading(false);
     }
@@ -130,11 +132,11 @@ export default function CollectionExplorer() {
                 className="group cursor-pointer p-0 overflow-hidden hover:scale-105 transition-transform duration-300"
               >
                 {card.imageUrl ? (
-                  <div className="relative aspect-[2/3] overflow-hidden">
+                  <div className="relative aspect-[2/3] overflow-hidden p-2">
                     <img
                       src={card.imageUrl}
                       alt={card.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      className="w-full h-full object-cover rounded-lg group-hover:scale-110 transition-transform duration-300"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = "none";
@@ -151,7 +153,7 @@ export default function CollectionExplorer() {
                       }}
                     />
                     {card.quantity > 1 && (
-                      <div className="absolute top-2 right-2 bg-[var(--glass-primary)] text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                      <div className="absolute top-2 right-2 bg-[var(--glass-primary)] text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg z-10">
                         ×{card.quantity}
                       </div>
                     )}

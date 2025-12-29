@@ -12,8 +12,9 @@ interface NavLink {
 }
 
 interface NavigationProps {
-  logo: string;
+  logo?: string;
   logoAlt?: string;
+  textLogo?: string;
   links: NavLink[];
   cta?: {
     href: string;
@@ -46,6 +47,7 @@ interface NavigationProps {
 export default function Navigation({
   logo,
   logoAlt = 'Logo',
+  textLogo,
   links,
   cta,
   primaryColor = 'rgba(38, 169, 224, 0.9)',
@@ -98,19 +100,28 @@ export default function Navigation({
           <div className="flex items-center justify-between min-h-12 sm:min-h-14">
             {/* Logo */}
             <Link href="/" className="flex items-center group min-h-[44px] min-w-[44px] flex-shrink-0">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="h-10 sm:h-12 md:h-14 w-auto"
-              >
-                <Image
-                  src={logo}
-                  alt={logoAlt}
-                  width={200}
-                  height={56}
-                  className="h-full w-auto object-contain max-w-[140px] sm:max-w-[180px] md:max-w-none"
-                  priority
-                />
-              </motion.div>
+              {textLogo ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="text-xl sm:text-2xl md:text-3xl font-bold text-white"
+                >
+                  {textLogo}
+                </motion.div>
+              ) : logo ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="h-10 sm:h-12 md:h-14 w-auto"
+                >
+                  <Image
+                    src={logo}
+                    alt={logoAlt}
+                    width={200}
+                    height={56}
+                    className="h-full w-auto object-contain max-w-[140px] sm:max-w-[180px] md:max-w-none"
+                    priority
+                  />
+                </motion.div>
+              ) : null}
             </Link>
 
             {/* Desktop Navigation */}

@@ -34,28 +34,39 @@ export interface CatalogSearchResult {
 }
 
 /**
- * Search the local TCG catalog
+ * Search the local TCG catalog with fuzzy matching
+ * Supports partial name matching (e.g., "chu" will match "Pikachu")
  */
 export async function searchCatalog(
   query: string,
   limit: number = 20
 ): Promise<CatalogSearchResult> {
-  const searchTerm = `%${query}%`;
+  // Clean the query
+  const cleanedQuery = query.trim();
+  const searchPattern = `%${cleanedQuery}%`;
   
   try {
-    // Use ILIKE for case-insensitive search
-    const { rows, rowCount } = await sql`
+    // Use ILIKE for case-insensitive fuzzy search
+    // This allows matching partial names anywhere in the string
+    // e.g., "chu" matches "Pikachu", "zard" matches "Charizard"
+    const { rows } = await sql`
       SELECT 
         id, name, supertype, subtypes, hp, types,
         set_id, set_name, set_series, number, artist, rarity, flavor_text,
         national_pokedex_numbers, images_small, images_large,
         tcgplayer_url, cardmarket_url,
         price_normal_market, price_normal_mid, price_normal_low,
-        price_holofoil_market, price_holofoil_mid
+        price_holofoil_market, price_holofoil_mid,
+        CASE 
+          WHEN LOWER(name) = LOWER(${cleanedQuery}) THEN 1
+          WHEN LOWER(name) LIKE LOWER(${`${cleanedQuery}%`}) THEN 2
+          WHEN LOWER(name) LIKE LOWER(${`%${cleanedQuery}%`}) THEN 3
+          ELSE 4
+        END as match_priority
       FROM tcg_catalog
-      WHERE name ILIKE ${searchTerm}
-         OR set_name ILIKE ${searchTerm}
-      ORDER BY name ASC
+      WHERE name ILIKE ${searchPattern}
+         OR set_name ILIKE ${searchPattern}
+      ORDER BY match_priority ASC, name ASC
       LIMIT ${limit}
     `;
     
@@ -63,8 +74,8 @@ export async function searchCatalog(
     const { rows: countRows } = await sql`
       SELECT COUNT(*) as total
       FROM tcg_catalog
-      WHERE name ILIKE ${searchTerm}
-         OR set_name ILIKE ${searchTerm}
+      WHERE name ILIKE ${searchPattern}
+         OR set_name ILIKE ${searchPattern}
     `;
     
     return {

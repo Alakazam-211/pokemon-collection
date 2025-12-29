@@ -21,6 +21,8 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
     value: "",
     quantity: "1",
     imageUrl: "",
+    isPsa: false,
+    psaRating: "",
   });
 
   const handleCardSelect = (tcgCard: PokemonTCGCard) => {
@@ -34,6 +36,8 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
       value: convertedCard.value > 0 ? convertedCard.value.toString() : "",
       quantity: formData.quantity,
       imageUrl: convertedCard.imageUrl || "",
+      isPsa: formData.isPsa,
+      psaRating: formData.psaRating,
     });
   };
 
@@ -54,6 +58,8 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
       value: parseFloat(formData.value) || 0,
       quantity: parseInt(formData.quantity) || 1,
       imageUrl: formData.imageUrl || undefined,
+      isPsa: formData.isPsa,
+      psaRating: formData.isPsa && formData.psaRating ? parseInt(formData.psaRating) : undefined,
     });
 
     // Reset form
@@ -66,6 +72,8 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
       value: "",
       quantity: "1",
       imageUrl: "",
+      isPsa: false,
+      psaRating: "",
     });
   };
 
@@ -224,6 +232,44 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
           className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
           placeholder="https://example.com/image.jpg"
         />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="isPsa"
+            checked={formData.isPsa}
+            onChange={(e) => setFormData({ ...formData, isPsa: e.target.checked, psaRating: e.target.checked ? formData.psaRating : "" })}
+            className="w-5 h-5 rounded border-gray-300 text-[var(--glass-primary)] focus:ring-[var(--glass-primary)]"
+          />
+          <label htmlFor="isPsa" className="text-sm font-medium text-[var(--glass-black-dark)] cursor-pointer">
+            PSA Graded
+          </label>
+        </div>
+
+        {formData.isPsa && (
+          <div>
+            <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
+              PSA Rating (1-10) *
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={formData.psaRating}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 10)) {
+                  setFormData({ ...formData, psaRating: value });
+                }
+              }}
+              className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+              placeholder="Enter PSA rating (1-10)"
+              required={formData.isPsa}
+            />
+          </div>
+        )}
       </div>
 
       <GlassButton

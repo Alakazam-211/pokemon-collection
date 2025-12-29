@@ -17,6 +17,8 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
     value: card.value.toString(),
     quantity: card.quantity.toString(),
     condition: card.condition,
+    isPsa: card.isPsa || false,
+    psaRating: card.psaRating?.toString() || "",
   });
 
   const handleSave = () => {
@@ -24,6 +26,8 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
       value: parseFloat(editData.value) || 0,
       quantity: parseInt(editData.quantity) || 1,
       condition: editData.condition,
+      isPsa: editData.isPsa,
+      psaRating: editData.isPsa && editData.psaRating ? parseInt(editData.psaRating) : undefined,
     });
     setIsEditing(false);
   };
@@ -55,6 +59,11 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
               {card.rarity && (
                 <span className="inline-block mt-1 px-2 py-1 text-xs font-medium glass-button rounded-full">
                   {card.rarity}
+                </span>
+              )}
+              {card.isPsa && card.psaRating && (
+                <span className="inline-block mt-1 px-2 py-1 text-xs font-bold bg-yellow-500/20 text-yellow-800 rounded-full border border-yellow-500/30">
+                  PSA {card.psaRating}
                 </span>
               )}
             </div>
@@ -114,6 +123,46 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
                   <option value="Poor">Poor</option>
                 </select>
               </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id={`psa-${card.id}`}
+                    checked={editData.isPsa}
+                    onChange={(e) => setEditData({ 
+                      ...editData, 
+                      isPsa: e.target.checked,
+                      psaRating: e.target.checked ? editData.psaRating : ""
+                    })}
+                    className="w-4 h-4 rounded border-gray-300 text-[var(--glass-primary)] focus:ring-[var(--glass-primary)]"
+                  />
+                  <label htmlFor={`psa-${card.id}`} className="text-xs text-[var(--glass-black-dark)]/70 cursor-pointer">
+                    PSA Graded
+                  </label>
+                </div>
+                {editData.isPsa && (
+                  <div>
+                    <label className="block text-xs text-[var(--glass-black-dark)]/70 mb-1">
+                      PSA Rating (1-10)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={editData.psaRating}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 10)) {
+                          setEditData({ ...editData, psaRating: value });
+                        }
+                      }}
+                      className="glass-input-enhanced w-full px-2 py-1 text-sm rounded-lg"
+                      placeholder="1-10"
+                      required={editData.isPsa}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
                 <GlassButton
                   onClick={handleSave}
@@ -129,6 +178,8 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
                       value: card.value.toString(),
                       quantity: card.quantity.toString(),
                       condition: card.condition,
+                      isPsa: card.isPsa || false,
+                      psaRating: card.psaRating?.toString() || "",
                     });
                   }}
                   variant="glass"
@@ -158,6 +209,14 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
                   ${card.value.toFixed(2)}
                 </span>
               </div>
+              {card.isPsa && card.psaRating && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--glass-black-dark)]/70">PSA Rating:</span>
+                  <span className="font-bold text-yellow-700">
+                    {card.psaRating}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm font-bold pt-1 border-t border-white/30">
                 <span className="text-[var(--glass-black-dark)]">Total Value:</span>
                 <span className="text-[var(--glass-primary)]">
@@ -178,13 +237,20 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
               Edit
             </GlassButton>
             <GlassButton
-              onClick={() => {
-                if (confirm(`Remove ${card.name} from collection?`)) {
-                  onRemove(card.id);
+              onClick={(e) => {
+                e.stopPropagation();
+                const confirmed = window.confirm(`Remove ${card.name} from collection?`);
+                if (confirmed) {
+                  try {
+                    onRemove(card.id);
+                  } catch (error) {
+                    console.error("Error removing card:", error);
+                  }
                 }
               }}
               variant="outline"
               className="px-3 py-1 text-xs border-red-500 text-red-600 hover:bg-red-500/10"
+              type="button"
             >
               Remove
             </GlassButton>
