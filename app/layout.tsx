@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { Fredoka } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-fredoka",
+});
 
 export const metadata: Metadata = {
   title: "Pokemon Card Collection",
@@ -14,7 +21,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className={`${fredoka.variable} antialiased`}>
         <Navigation
           logo="/logo.svg"
           logoAlt="Pokemon Collection Logo"
@@ -23,7 +36,7 @@ export default function RootLayout({
             { href: '/collection', label: 'Collection' },
           ]}
           cta={{ href: '/collection', label: 'Explore Collection' }}
-          primaryColor="#26A9E0"
+          primaryColor="rgba(59, 76, 202, 0.95)"
         />
         <div className="pt-24 pb-8">
           {children}

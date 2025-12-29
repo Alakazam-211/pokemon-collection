@@ -48,7 +48,7 @@ export default function CollectionExplorer() {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-20">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--glass-primary)]"></div>
-            <p className="mt-4 text-white">Loading collection...</p>
+            <p className="mt-4 text-[var(--glass-black-dark)]">Loading collection...</p>
           </div>
         </div>
       </main>
@@ -62,10 +62,10 @@ export default function CollectionExplorer() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
+              <h1 className="text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
                 Collection Explorer
               </h1>
-              <p className="text-white/90 text-lg">
+              <p className="text-[var(--glass-black-dark)]/80 text-lg">
                 Browse your {cards.length} {cards.length === 1 ? "card" : "cards"} in detail
               </p>
             </div>
@@ -108,7 +108,7 @@ export default function CollectionExplorer() {
         {/* Card Grid */}
         {filteredCards.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-xl text-white">
+            <p className="text-xl text-[var(--glass-black-dark)]">
               {searchTerm ? `No cards found matching "${searchTerm}"` : "No cards in your collection yet."}
             </p>
             {!searchTerm && (

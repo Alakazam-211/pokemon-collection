@@ -124,10 +124,10 @@ export default function Home() {
     <main className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
+          <h1 className="text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
             Pokémon Card Collection
           </h1>
-          <p className="text-white/90 mb-6 text-lg">
+          <p className="text-[var(--glass-black-dark)]/80 mb-6 text-lg">
             Track your collection and total deck value
           </p>
           <GlassButton
