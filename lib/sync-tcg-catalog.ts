@@ -1,7 +1,7 @@
 // Script to sync the entire Pokemon TCG catalog to local database
 import { sql } from '@vercel/postgres';
 import { searchCards, PokemonTCGCard } from './pokemon-tcg-api';
-import { updateSyncStatus } from '../app/api/pokemon/sync/status/route';
+import { updateSyncStatus } from './sync-status';
 
 const API_BASE_URL = 'https://api.pokemontcg.io/v2';
 const PAGE_SIZE = 250; // Max page size for Pokemon TCG API
@@ -43,11 +43,49 @@ export async function syncTCGCatalog(): Promise<SyncStats> {
       startTime: stats.startTime,
     });
     
+    // Check if table exists before starting sync
+    updateSyncStatus({
+      message: 'Checking database...',
+    });
+    
+    try {
+      await sql`SELECT 1 FROM tcg_catalog LIMIT 1`;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMsg.includes('does not exist')) {
+        updateSyncStatus({
+          status: 'error',
+          message: 'Database table "tcg_catalog" does not exist. Please run the migration first.',
+          endTime: Date.now(),
+        });
+        throw new Error('Database table "tcg_catalog" does not exist. Please run lib/migrations/create_tcg_catalog.sql in Neon SQL Editor first.');
+      }
+      throw error;
+    }
+    
+    updateSyncStatus({
+      message: 'Starting sync...',
+    });
+    
     console.log('Starting TCG catalog sync...');
     
-    // Get total count first - search for a common card to get total count
-    const firstPage = await fetch(`${API_BASE_URL}/cards?pageSize=1`)
-      .then(res => res.json());
+    // Get total count first - use a wildcard query to get all cards
+    let firstPage;
+    try {
+      // Pokemon TCG API v2 requires a query parameter, use wildcard to get all cards
+      const response = await fetch(`${API_BASE_URL}/cards?q=*&pageSize=1`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Could not read error body');
+        throw new Error(`Failed to fetch total count: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      firstPage = await response.json();
+    } catch (error) {
+      throw error;
+    }
+    
     const totalCount = firstPage.totalCount || 0;
     stats.totalPages = Math.ceil(totalCount / PAGE_SIZE);
     
@@ -63,8 +101,8 @@ export async function syncTCGCatalog(): Promise<SyncStats> {
       console.log(`Processing page ${page}/${stats.totalPages}...`);
       
       try {
-        // Fetch directly from API for pagination
-        const response = await fetch(`${API_BASE_URL}/cards?pageSize=${PAGE_SIZE}&page=${page}`, {
+        // Fetch directly from API for pagination - use wildcard query to get all cards
+        const response = await fetch(`${API_BASE_URL}/cards?q=*&pageSize=${PAGE_SIZE}&page=${page}`, {
           headers: { 'Accept': 'application/json' },
         });
         
@@ -88,6 +126,7 @@ export async function syncTCGCatalog(): Promise<SyncStats> {
             // Update progress every 50 cards
             if (stats.cardsProcessed % 50 === 0) {
               updateSyncStatus({
+                status: 'running', // Ensure status stays as running
                 cardsProcessed: stats.cardsProcessed,
                 cardsInserted: stats.cardsInserted,
                 cardsUpdated: stats.cardsUpdated,
@@ -99,12 +138,16 @@ export async function syncTCGCatalog(): Promise<SyncStats> {
           } catch (error) {
             console.error(`Error processing card ${card.id}:`, error);
             stats.errors++;
-            updateSyncStatus({ errors: stats.errors });
+            updateSyncStatus({ 
+              status: 'running', // Keep status as running even if there are errors
+              errors: stats.errors 
+            });
           }
         }
         
         // Update final stats for this page
         updateSyncStatus({
+          status: 'running', // Ensure status stays as running
           cardsProcessed: stats.cardsProcessed,
           cardsInserted: stats.cardsInserted,
           cardsUpdated: stats.cardsUpdated,
@@ -156,13 +199,6 @@ async function upsertCard(card: PokemonTCGCard): Promise<boolean> {
   const priceNormal = card.tcgplayer?.prices?.normal;
   const priceHolofoil = card.tcgplayer?.prices?.holofoil;
   
-  // Check if card exists
-  const { rows: existing } = await sql`
-    SELECT id FROM tcg_catalog WHERE id = ${card.id}
-  `;
-  
-  const isInsert = existing.length === 0;
-  
   // Convert arrays to PostgreSQL array format
   const subtypesArray = card.subtypes && card.subtypes.length > 0 
     ? `{${card.subtypes.map(s => `"${s.replace(/"/g, '\\"')}"`).join(',')}}`
@@ -174,50 +210,61 @@ async function upsertCard(card: PokemonTCGCard): Promise<boolean> {
     ? `{${card.nationalPokedexNumbers.join(',')}}`
     : '{}';
   
-  await sql.query(`
-    INSERT INTO tcg_catalog (
-      id, name, supertype, subtypes, hp, types,
-      set_id, set_name, set_series, number, artist, rarity, flavor_text,
-      national_pokedex_numbers, images_small, images_large,
-      tcgplayer_url, cardmarket_url,
-      price_normal_market, price_normal_mid, price_normal_low,
-      price_holofoil_market, price_holofoil_mid,
-      last_synced_at, updated_at
+  // Use INSERT ... ON CONFLICT to handle duplicates automatically
+  // This will INSERT new cards or UPDATE existing ones based on the PRIMARY KEY (id)
+  // The ON CONFLICT clause ensures no duplicates - if a card with the same id exists,
+  // it will update all fields instead of creating a duplicate
+  const result = await sql.query(`
+    WITH existing AS (
+      SELECT id FROM tcg_catalog WHERE id = $1
+    ),
+    upserted AS (
+      INSERT INTO tcg_catalog (
+        id, name, supertype, subtypes, hp, types,
+        set_id, set_name, set_series, number, artist, rarity, flavor_text,
+        national_pokedex_numbers, images_small, images_large,
+        tcgplayer_url, cardmarket_url,
+        price_normal_market, price_normal_mid, price_normal_low,
+        price_holofoil_market, price_holofoil_mid,
+        last_synced_at, updated_at
+      )
+      VALUES (
+        $1, $2, $3, $4::text[], $5, $6::text[],
+        $7, $8, $9, $10, $11, $12, $13,
+        $14::integer[], $15, $16,
+        $17, $18,
+        $19, $20, $21,
+        $22, $23,
+        NOW(), NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        supertype = EXCLUDED.supertype,
+        subtypes = EXCLUDED.subtypes,
+        hp = EXCLUDED.hp,
+        types = EXCLUDED.types,
+        set_id = EXCLUDED.set_id,
+        set_name = EXCLUDED.set_name,
+        set_series = EXCLUDED.set_series,
+        number = EXCLUDED.number,
+        artist = EXCLUDED.artist,
+        rarity = EXCLUDED.rarity,
+        flavor_text = EXCLUDED.flavor_text,
+        national_pokedex_numbers = EXCLUDED.national_pokedex_numbers,
+        images_small = EXCLUDED.images_small,
+        images_large = EXCLUDED.images_large,
+        tcgplayer_url = EXCLUDED.tcgplayer_url,
+        cardmarket_url = EXCLUDED.cardmarket_url,
+        price_normal_market = EXCLUDED.price_normal_market,
+        price_normal_mid = EXCLUDED.price_normal_mid,
+        price_normal_low = EXCLUDED.price_normal_low,
+        price_holofoil_market = EXCLUDED.price_holofoil_market,
+        price_holofoil_mid = EXCLUDED.price_holofoil_mid,
+        last_synced_at = NOW(),
+        updated_at = NOW()
+      RETURNING id
     )
-    VALUES (
-      $1, $2, $3, $4::text[], $5, $6::text[],
-      $7, $8, $9, $10, $11, $12, $13,
-      $14::integer[], $15, $16,
-      $17, $18,
-      $19, $20, $21,
-      $22, $23,
-      NOW(), NOW()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      name = EXCLUDED.name,
-      supertype = EXCLUDED.supertype,
-      subtypes = EXCLUDED.subtypes,
-      hp = EXCLUDED.hp,
-      types = EXCLUDED.types,
-      set_id = EXCLUDED.set_id,
-      set_name = EXCLUDED.set_name,
-      set_series = EXCLUDED.set_series,
-      number = EXCLUDED.number,
-      artist = EXCLUDED.artist,
-      rarity = EXCLUDED.rarity,
-      flavor_text = EXCLUDED.flavor_text,
-      national_pokedex_numbers = EXCLUDED.national_pokedex_numbers,
-      images_small = EXCLUDED.images_small,
-      images_large = EXCLUDED.images_large,
-      tcgplayer_url = EXCLUDED.tcgplayer_url,
-      cardmarket_url = EXCLUDED.cardmarket_url,
-      price_normal_market = EXCLUDED.price_normal_market,
-      price_normal_mid = EXCLUDED.price_normal_mid,
-      price_normal_low = EXCLUDED.price_normal_low,
-      price_holofoil_market = EXCLUDED.price_holofoil_market,
-      price_holofoil_mid = EXCLUDED.price_holofoil_mid,
-      last_synced_at = NOW(),
-      updated_at = NOW()
+    SELECT NOT EXISTS(SELECT 1 FROM existing) AS inserted
   `, [
     card.id,
     card.name,
@@ -244,6 +291,7 @@ async function upsertCard(card: PokemonTCGCard): Promise<boolean> {
     priceHolofoil?.mid || null,
   ]);
   
-  return isInsert;
+  // Return true if it was an INSERT (new card), false if it was an UPDATE (existing card)
+  return result.rows[0]?.inserted ?? false;
 }
 

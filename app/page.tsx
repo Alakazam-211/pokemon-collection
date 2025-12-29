@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { PokemonCard, CollectionStats } from "@/types/pokemon";
 import AddCardForm from "@/components/AddCardForm";
 import CardList from "@/components/CardList";
 import CollectionStatsDisplay from "@/components/CollectionStatsDisplay";
 import SyncCatalogButton from "@/components/SyncCatalogButton";
+import GlassCard from "@/components/GlassCard";
+import GlassButton from "@/components/GlassButton";
 
 export default function Home() {
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -120,33 +121,36 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <main className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
             Pokémon Card Collection
           </h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
+          <p className="text-white/90 mb-6 text-lg">
             Track your collection and total deck value
           </p>
-          <Link
+          <GlassButton
             href="/collection"
-            className="inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+            variant="primary"
+            className="text-lg"
           >
             🎴 Explore Collection
-          </Link>
+          </GlassButton>
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-lg">
-            {error}
-            <button
-              onClick={() => setError(null)}
-              className="ml-2 text-red-800 dark:text-red-300 hover:underline"
-            >
-              Dismiss
-            </button>
-          </div>
+          <GlassCard className="mb-6 p-6 bg-red-500/20 border-red-500/50">
+            <div className="flex items-center justify-between">
+              <span className="text-red-800 font-semibold">{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="ml-4 px-4 py-2 glass-button text-red-800 hover:text-red-900"
+              >
+                Dismiss
+              </button>
+            </div>
+          </GlassCard>
         )}
 
         <CollectionStatsDisplay stats={stats} />
@@ -154,19 +158,19 @@ export default function Home() {
         <SyncCatalogButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+          <GlassCard className="p-6">
+            <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
               Add New Card
             </h2>
             <AddCardForm onAdd={addCard} />
-          </div>
+          </GlassCard>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+          <GlassCard className="p-6">
+            <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
               Your Collection ({cards.length} {cards.length === 1 ? "card" : "cards"})
             </h2>
             {loading ? (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-12 text-[var(--glass-black-dark)]/70">
                 <p>Loading your collection...</p>
               </div>
             ) : (
@@ -176,7 +180,7 @@ export default function Home() {
                 onUpdate={updateCard}
               />
             )}
-          </div>
+          </GlassCard>
         </div>
       </div>
     </main>

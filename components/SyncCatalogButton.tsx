@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import GlassCard from "./GlassCard";
+import GlassButton from "./GlassButton";
 
 interface SyncStatus {
   status: 'idle' | 'running' | 'completed' | 'error';
@@ -32,6 +34,7 @@ export default function SyncCatalogButton() {
         try {
           const response = await fetch('/api/pokemon/sync/status');
           const data = await response.json();
+          
           setStatus(data);
           
           // Stop polling if sync completed or errored
@@ -45,7 +48,9 @@ export default function SyncCatalogButton() {
     }
     
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
   }, [polling, status?.status]);
 
@@ -64,6 +69,7 @@ export default function SyncCatalogButton() {
         // Start polling for status
         const statusResponse = await fetch('/api/pokemon/sync/status');
         const statusData = await statusResponse.json();
+        
         setStatus(statusData);
       } else {
         alert(`Failed to start sync: ${data.message || data.error}`);
@@ -91,27 +97,24 @@ export default function SyncCatalogButton() {
   const hasError = status?.status === 'error';
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+    <GlassCard className="p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)]">
             TCG Catalog Sync
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-[var(--glass-black-dark)]/70 mt-1">
             Sync the entire Pokemon TCG database to your local Neon database for instant searches
           </p>
         </div>
-        <button
+        <GlassButton
           onClick={handleSync}
           disabled={loading || isRunning}
-          className={`px-6 py-3 rounded-md font-semibold transition-colors ${
-            isRunning
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-indigo-600 hover:bg-indigo-700'
-          } text-white`}
+          variant={isRunning ? "glass" : "primary"}
+          className={isRunning ? "cursor-not-allowed opacity-50" : ""}
         >
           {loading ? 'Starting...' : isRunning ? 'Syncing...' : 'Start Sync'}
-        </button>
+        </GlassButton>
       </div>
 
       {status && (
@@ -119,33 +122,33 @@ export default function SyncCatalogButton() {
           {/* Catalog Stats */}
           {status.catalogStats && (
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400">Total Cards</div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <GlassCard className="p-4 bg-blue-500/20 border-blue-400/30">
+                <div className="text-sm text-[var(--glass-black-dark)]/70">Total Cards</div>
+                <div className="text-2xl font-bold text-[var(--glass-black-dark)]">
                   {status.catalogStats.totalCards.toLocaleString()}
                 </div>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400">Last Synced</div>
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              </GlassCard>
+              <GlassCard className="p-4 bg-green-500/20 border-green-400/30">
+                <div className="text-sm text-[var(--glass-black-dark)]/70">Last Synced</div>
+                <div className="text-lg font-semibold text-[var(--glass-black-dark)]">
                   {status.catalogStats.lastSynced
                     ? new Date(status.catalogStats.lastSynced).toLocaleString()
                     : 'Never'}
                 </div>
-              </div>
+              </GlassCard>
             </div>
           )}
 
           {/* Progress Bar */}
           {isRunning && (
             <div>
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <div className="flex justify-between text-sm text-[var(--glass-black-dark)]/70 mb-2">
                 <span>{status.message}</span>
                 <span>{status.progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
+                  className="bg-[var(--glass-primary)] h-3 rounded-full transition-all duration-300"
                   style={{ width: `${status.progress}%` }}
                 />
               </div>
@@ -154,33 +157,33 @@ export default function SyncCatalogButton() {
 
           {/* Status Details */}
           {(isRunning || isCompleted || hasError) && (
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <GlassCard className="p-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <div className="text-gray-600 dark:text-gray-400">Status</div>
+                  <div className="text-[var(--glass-black-dark)]/70">Status</div>
                   <div className={`font-semibold ${
                     isRunning ? 'text-blue-600' :
                     isCompleted ? 'text-green-600' :
                     hasError ? 'text-red-600' :
-                    'text-gray-900 dark:text-white'
+                    'text-[var(--glass-black-dark)]'
                   }`}>
                     {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-gray-600 dark:text-gray-400">Cards Processed</div>
-                  <div className="font-semibold text-gray-900 dark:text-white">
+                  <div className="text-[var(--glass-black-dark)]/70">Cards Processed</div>
+                  <div className="font-semibold text-[var(--glass-black-dark)]">
                     {status.cardsProcessed.toLocaleString()}
                   </div>
                 </div>
                 <div>
-                  <div className="text-gray-600 dark:text-gray-400">Inserted</div>
+                  <div className="text-[var(--glass-black-dark)]/70">Inserted</div>
                   <div className="font-semibold text-green-600">
                     {status.cardsInserted.toLocaleString()}
                   </div>
                 </div>
                 <div>
-                  <div className="text-gray-600 dark:text-gray-400">Updated</div>
+                  <div className="text-[var(--glass-black-dark)]/70">Updated</div>
                   <div className="font-semibold text-blue-600">
                     {status.cardsUpdated.toLocaleString()}
                   </div>
@@ -188,7 +191,7 @@ export default function SyncCatalogButton() {
               </div>
               
               {status.totalPages > 0 && (
-                <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                <div className="mt-3 text-sm text-[var(--glass-black-dark)]/70">
                   Page {status.currentPage} of {status.totalPages}
                   {status.errors > 0 && (
                     <span className="ml-4 text-red-600">
@@ -199,44 +202,44 @@ export default function SyncCatalogButton() {
               )}
               
               {status.message && (
-                <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                <div className="mt-2 text-sm text-[var(--glass-black-dark)]">
                   {status.message}
                 </div>
               )}
-            </div>
+            </GlassCard>
           )}
 
           {/* Completed Message */}
           {isCompleted && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div className="text-green-800 dark:text-green-200 font-semibold">
+            <GlassCard className="p-4 bg-green-500/20 border-green-400/50">
+              <div className="text-green-800 font-semibold">
                 ✅ Sync completed successfully!
               </div>
-              <div className="text-sm text-green-700 dark:text-green-300 mt-1">
+              <div className="text-sm text-green-700 mt-1">
                 Your catalog now has {status.cardsProcessed.toLocaleString()} cards. Searches will be instant!
               </div>
-            </div>
+            </GlassCard>
           )}
 
           {/* Error Message */}
           {hasError && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <div className="text-red-800 dark:text-red-200 font-semibold">
+            <GlassCard className="p-4 bg-red-500/20 border-red-400/50">
+              <div className="text-red-800 font-semibold">
                 ❌ Sync failed
               </div>
-              <div className="text-sm text-red-700 dark:text-red-300 mt-1">
+              <div className="text-sm text-red-700 mt-1">
                 {status.message}
               </div>
-            </div>
+            </GlassCard>
           )}
         </div>
       )}
 
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-4 text-xs text-[var(--glass-black-dark)]/60">
         💡 Tip: The sync runs in the background. You can leave this page and it will continue.
         Check back later to see the progress!
       </div>
-    </div>
+    </GlassCard>
   );
 }
 

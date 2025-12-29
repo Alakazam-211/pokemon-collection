@@ -202,17 +202,10 @@ export async function searchCards(params: SearchParams = {}): Promise<PokemonTCG
   const cacheKey = url;
   const cached = cache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-    // #region agent log
-    await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:190',message:'Cache hit',data:{cacheKey,age:Date.now()-cached.timestamp},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-    // #endregion
     return cached.data;
   }
   
   try {
-    // #region agent log
-    await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:196',message:'Calling Pokemon TCG API',data:{url,queryParams:queryParams.toString(),params,queryBuildTime,cacheMiss:true},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-    // #endregion
-    
     const fetchStartTime = Date.now();
     const response = await fetch(url, {
       headers: {
@@ -221,15 +214,7 @@ export async function searchCards(params: SearchParams = {}): Promise<PokemonTCG
     });
     const fetchTime = Date.now() - fetchStartTime;
     
-    // #region agent log
-    await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:195',message:'Pokemon TCG API response received',data:{status:response.status,statusText:response.statusText,ok:response.ok,fetchTime},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-    // #endregion
-    
     if (!response.ok) {
-      // #region agent log
-      const errorBody = await response.text().catch(() => 'Could not read error body');
-      await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:202',message:'Pokemon TCG API error response',data:{status:response.status,statusText:response.statusText,errorBody},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-      // #endregion
       throw new Error(`Pokemon TCG API error: ${response.status} ${response.statusText}`);
     }
     
@@ -248,15 +233,8 @@ export async function searchCards(params: SearchParams = {}): Promise<PokemonTCG
       // Check cache for wildcard query
       const wildcardCached = cache.get(wildcardUrl);
       if (wildcardCached && (Date.now() - wildcardCached.timestamp) < CACHE_TTL) {
-        // #region agent log
-        await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:218',message:'Wildcard cache hit',data:{wildcardQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-        // #endregion
         return wildcardCached.data;
       }
-      
-      // #region agent log
-      await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:223',message:'Trying wildcard search',data:{wildcardQuery,wildcardUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-      // #endregion
       
       const wildcardFetchStart = Date.now();
       const wildcardResponse = await fetch(wildcardUrl, {
@@ -268,9 +246,6 @@ export async function searchCards(params: SearchParams = {}): Promise<PokemonTCG
         const wildcardData = await wildcardResponse.json();
         // Cache wildcard result
         cache.set(wildcardUrl, { data: wildcardData, timestamp: Date.now() });
-        // #region agent log
-        await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:233',message:'Wildcard search success',data:{hasData:!!wildcardData.data,dataLength:wildcardData.data?.length||0,wildcardFetchTime},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-        // #endregion
         return wildcardData;
       }
     }
@@ -278,14 +253,8 @@ export async function searchCards(params: SearchParams = {}): Promise<PokemonTCG
     // Cache the result
     cache.set(cacheKey, { data, timestamp: Date.now() });
     
-    // #region agent log
-    await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:242',message:'Pokemon TCG API success',data:{hasData:!!data.data,dataLength:data.data?.length||0,queryBuildTime,fetchTime,parseTime,totalTime,cached:false},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
-    // #endregion
     return data;
   } catch (error) {
-    // #region agent log
-    await fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pokemon-tcg-api.ts:144',message:'Exception in searchCards',data:{errorMessage:error instanceof Error?error.message:'Unknown',errorName:error instanceof Error?error.name:'Unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     console.error('Error searching Pokemon cards:', error);
     throw error;
   }

@@ -37,13 +37,13 @@ export default function CardList({ cards, onRemove, onUpdate }: CardListProps) {
           placeholder="Search cards..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+          className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
         />
       </div>
 
       <div className="space-y-3 max-h-[600px] overflow-y-auto">
         {filteredCards.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-8 text-[var(--glass-black-dark)]/70">
             No cards found matching "{searchTerm}"
           </div>
         ) : (

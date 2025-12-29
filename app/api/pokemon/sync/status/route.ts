@@ -1,35 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-
-// Simple in-memory store for sync progress (in production, use Redis or database)
-const syncStatus = new Map<string, {
-  status: 'idle' | 'running' | 'completed' | 'error';
-  progress: number;
-  totalPages: number;
-  currentPage: number;
-  cardsProcessed: number;
-  cardsInserted: number;
-  cardsUpdated: number;
-  errors: number;
-  message: string;
-  startTime?: number;
-  endTime?: number;
-}>();
-
-const SYNC_ID = 'main'; // Single sync instance
+import { getSyncStatus, getDefaultStatus } from '@/lib/sync-status';
 
 export async function GET(request: NextRequest) {
-  const status = syncStatus.get(SYNC_ID) || {
-    status: 'idle' as const,
-    progress: 0,
-    totalPages: 0,
-    currentPage: 0,
-    cardsProcessed: 0,
-    cardsInserted: 0,
-    cardsUpdated: 0,
-    errors: 0,
-    message: 'No sync in progress',
-  };
+  const status = getSyncStatus() || getDefaultStatus();
   
   // Also get catalog stats
   try {
@@ -58,24 +32,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export function updateSyncStatus(updates: Partial<typeof syncStatus extends Map<string, infer V> ? V : never>) {
-  const current = syncStatus.get(SYNC_ID) || {
-    status: 'running' as const,
-    progress: 0,
-    totalPages: 0,
-    currentPage: 0,
-    cardsProcessed: 0,
-    cardsInserted: 0,
-    cardsUpdated: 0,
-    errors: 0,
-    message: '',
-    startTime: Date.now(),
-  };
-  
-  syncStatus.set(SYNC_ID, { ...current, ...updates });
-}
-
-export function getSyncStatus() {
-  return syncStatus.get(SYNC_ID);
-}
 

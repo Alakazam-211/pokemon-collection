@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { PokemonCard } from "@/types/pokemon";
 import { PokemonTCGCard, convertTCGCardToPokemonCard } from "@/lib/pokemon-tcg-api";
 import CardSearch from "./CardSearch";
+import GlassButton from "./GlassButton";
 
 interface AddCardFormProps {
   onAdd: (card: Omit<PokemonCard, "id">) => void;
@@ -75,10 +76,10 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         <button
           type="button"
           onClick={() => setUseSearch(true)}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all ${
             useSearch
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+              ? "bg-[var(--glass-primary)] text-white shadow-lg"
+              : "glass-button text-[var(--glass-black-dark)]"
           }`}
         >
           🔍 Search Cards
@@ -86,10 +87,10 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         <button
           type="button"
           onClick={() => setUseSearch(false)}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all ${
             !useSearch
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+              ? "bg-[var(--glass-primary)] text-white shadow-lg"
+              : "glass-button text-[var(--glass-black-dark)]"
           }`}
         >
           ✏️ Manual Entry
@@ -101,14 +102,14 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
       ) : null}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
           Card Name *
         </label>
         <input
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+          className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
           placeholder="e.g., Pikachu VMAX"
           required
         />
@@ -116,28 +117,28 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Set *
           </label>
           <input
             type="text"
             value={formData.set}
             onChange={(e) => setFormData({ ...formData, set: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
             placeholder="e.g., Base Set"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Card Number
           </label>
           <input
             type="text"
             value={formData.number}
             onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
             placeholder="e.g., 25/102"
           />
         </div>
@@ -145,20 +146,20 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Rarity
           </label>
           <input
             type="text"
             value={formData.rarity}
             onChange={(e) => setFormData({ ...formData, rarity: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
             placeholder="e.g., Ultra Rare"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Condition
           </label>
           <select
@@ -169,7 +170,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
                 condition: e.target.value as PokemonCard["condition"],
               })
             }
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
           >
             <option value="Mint">Mint</option>
             <option value="Near Mint">Near Mint</option>
@@ -183,7 +184,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Value ($) *
           </label>
           <input
@@ -192,14 +193,14 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             min="0"
             value={formData.value}
             onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
             placeholder="0.00"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Quantity
           </label>
           <input
@@ -207,30 +208,31 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             min="1"
             value={formData.quantity}
             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
           Image URL (optional)
         </label>
         <input
           type="url"
           value={formData.imageUrl}
           onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+          className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
           placeholder="https://example.com/image.jpg"
         />
       </div>
 
-      <button
+      <GlassButton
         type="submit"
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-colors duration-200"
+        variant="primary"
+        className="w-full"
       >
         Add Card to Collection
-      </button>
+      </GlassButton>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { syncTCGCatalog } from '@/lib/sync-tcg-catalog';
-import { updateSyncStatus } from './status/route';
+import { getSyncStatus, clearSyncStatus } from '@/lib/sync-status';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check if sync is already running
-    const currentStatus = await import('./status/route').then(m => m.getSyncStatus());
+    const currentStatus = getSyncStatus();
+    
     if (currentStatus?.status === 'running') {
       return NextResponse.json({
         success: false,
