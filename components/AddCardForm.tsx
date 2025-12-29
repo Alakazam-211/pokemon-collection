@@ -2,12 +2,15 @@
 
 import { useState, FormEvent } from "react";
 import { PokemonCard } from "@/types/pokemon";
+import { PokemonTCGCard, convertTCGCardToPokemonCard } from "@/lib/pokemon-tcg-api";
+import CardSearch from "./CardSearch";
 
 interface AddCardFormProps {
   onAdd: (card: Omit<PokemonCard, "id">) => void;
 }
 
 export default function AddCardForm({ onAdd }: AddCardFormProps) {
+  const [useSearch, setUseSearch] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     set: "",
@@ -18,6 +21,20 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
     quantity: "1",
     imageUrl: "",
   });
+
+  const handleCardSelect = (tcgCard: PokemonTCGCard) => {
+    const convertedCard = convertTCGCardToPokemonCard(tcgCard, formData.condition);
+    setFormData({
+      name: convertedCard.name,
+      set: convertedCard.set,
+      number: convertedCard.number,
+      rarity: convertedCard.rarity,
+      condition: formData.condition,
+      value: convertedCard.value > 0 ? convertedCard.value.toString() : "",
+      quantity: formData.quantity,
+      imageUrl: convertedCard.imageUrl || "",
+    });
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -53,6 +70,36 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Toggle between search and manual entry */}
+      <div className="flex gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setUseSearch(true)}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            useSearch
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          }`}
+        >
+          🔍 Search Cards
+        </button>
+        <button
+          type="button"
+          onClick={() => setUseSearch(false)}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            !useSearch
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          }`}
+        >
+          ✏️ Manual Entry
+        </button>
+      </div>
+
+      {useSearch ? (
+        <CardSearch onSelectCard={handleCardSelect} />
+      ) : null}
+
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Card Name *
