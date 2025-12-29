@@ -4,10 +4,11 @@ import { PokemonCard } from '@/types/pokemon';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const card = await getCardById(params.id);
+    const { id } = await params;
+    const card = await getCardById(id);
     
     if (!card) {
       return NextResponse.json(
@@ -28,9 +29,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     
     const updates: Partial<PokemonCard> = {};
@@ -44,7 +46,7 @@ export async function PUT(
     if (body.quantity !== undefined) updates.quantity = parseInt(body.quantity);
     if (body.imageUrl !== undefined) updates.imageUrl = body.imageUrl;
 
-    const updatedCard = await updateCard(params.id, updates);
+    const updatedCard = await updateCard(id, updates);
     return NextResponse.json(updatedCard);
   } catch (error) {
     console.error('Error updating card:', error);
@@ -63,10 +65,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await deleteCard(params.id);
+    const { id } = await params;
+    await deleteCard(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting card:', error);
