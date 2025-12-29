@@ -1,6 +1,10 @@
 import { sql } from '@vercel/postgres';
 import { PokemonCard } from '@/types/pokemon';
 
+// @vercel/postgres reads from POSTGRES_URL by default
+// If your provider uses DATABASE_URL, set POSTGRES_URL to the same value in Vercel env vars
+// Or update the environment variable name in your provider's Vercel integration settings
+
 export async function getAllCards(): Promise<PokemonCard[]> {
   try {
     const { rows } = await sql`
