@@ -45,17 +45,43 @@ export default function CardSearch({ onSelectCard, onClose }: CardSearchProps) {
     setError(null);
 
     searchTimeoutRef.current = setTimeout(async () => {
+      const clientStartTime = Date.now();
       try {
-        const response = await fetch(`/api/pokemon/search?q=${encodeURIComponent(searchQuery)}&pageSize=10`);
+        // #region agent log
+        const searchUrl = `/api/pokemon/search?q=${encodeURIComponent(searchQuery)}&pageSize=10`;
+        fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CardSearch.tsx:49',message:'Search API call starting',data:{searchQuery,searchUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
+        // #endregion
+        
+        const fetchStartTime = Date.now();
+        const response = await fetch(searchUrl);
+        const fetchTime = Date.now() - fetchStartTime;
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CardSearch.tsx:52',message:'Response received',data:{status:response.status,statusText:response.statusText,ok:response.ok,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         
         if (!response.ok) {
-          throw new Error("Failed to search cards");
+          // #region agent log
+          const errorText = await response.text().catch(() => 'Could not read error body');
+          fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CardSearch.tsx:56',message:'Response not OK',data:{status:response.status,statusText:response.statusText,errorBody:errorText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          throw new Error(`Failed to search cards: ${response.status} ${response.statusText}`);
         }
 
+        const parseStartTime = Date.now();
         const data = await response.json();
+        const parseTime = Date.now() - parseStartTime;
+        const totalClientTime = Date.now() - clientStartTime;
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CardSearch.tsx:63',message:'JSON parsed successfully',data:{hasData:!!data.data,dataLength:data.data?.length||0,totalCount:data.totalCount,fetchTime,parseTime,totalClientTime},timestamp:Date.now(),sessionId:'debug-session',runId:'perf-tracking',hypothesisId:'perf'})}).catch(()=>{});
+        // #endregion
         setResults(data.data || []);
         setShowResults(true);
       } catch (err) {
+        // #region agent log
+        fetch('http://127.0.0.1:7251/ingest/2b29af8d-f28f-411d-acc1-a9922535324c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CardSearch.tsx:68',message:'Exception caught',data:{errorMessage:err instanceof Error?err.message:'Unknown',errorName:err instanceof Error?err.name:'Unknown',errorStack:err instanceof Error?err.stack:'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         console.error("Search error:", err);
         setError(err instanceof Error ? err.message : "Failed to search cards");
         setResults([]);

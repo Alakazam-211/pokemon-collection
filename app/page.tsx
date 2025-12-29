@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { PokemonCard, CollectionStats } from "@/types/pokemon";
 import AddCardForm from "@/components/AddCardForm";
 import CardList from "@/components/CardList";
 import CollectionStatsDisplay from "@/components/CollectionStatsDisplay";
+import SyncCatalogButton from "@/components/SyncCatalogButton";
 
 export default function Home() {
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -124,9 +126,15 @@ export default function Home() {
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
             Pokémon Card Collection
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
             Track your collection and total deck value
           </p>
+          <Link
+            href="/collection"
+            className="inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+          >
+            🎴 Explore Collection
+          </Link>
         </div>
 
         {error && (
@@ -142,6 +150,8 @@ export default function Home() {
         )}
 
         <CollectionStatsDisplay stats={stats} />
+
+        <SyncCatalogButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
