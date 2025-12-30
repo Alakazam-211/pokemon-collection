@@ -99,7 +99,7 @@ export default function FilterBar({
 
         {/* Filter Controls */}
         {isExpanded && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {/* Set Filter */}
             {filterOptions.sets && filterOptions.sets.length > 0 && (
               <div>
@@ -109,7 +109,7 @@ export default function FilterBar({
                 <select
                   value={activeFilters.set || ""}
                   onChange={(e) => handleFilterChange("set", e.target.value)}
-                  className="glass-input-enhanced w-full px-3 py-2 rounded-lg text-sm"
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
                   <option value="">All Sets</option>
                   {filterOptions.sets.map((set) => (
@@ -130,7 +130,7 @@ export default function FilterBar({
                 <select
                   value={activeFilters.series || ""}
                   onChange={(e) => handleFilterChange("series", e.target.value)}
-                  className="glass-input-enhanced w-full px-3 py-2 rounded-lg text-sm"
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
                   <option value="">All Series</option>
                   {filterOptions.series.map((series) => (
@@ -151,7 +151,7 @@ export default function FilterBar({
                 <select
                   value={activeFilters.rarity || ""}
                   onChange={(e) => handleFilterChange("rarity", e.target.value)}
-                  className="glass-input-enhanced w-full px-3 py-2 rounded-lg text-sm"
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
                   <option value="">All Rarities</option>
                   {filterOptions.rarities.map((rarity) => (
@@ -172,7 +172,7 @@ export default function FilterBar({
                 <select
                   value={activeFilters.type || ""}
                   onChange={(e) => handleFilterChange("type", e.target.value)}
-                  className="glass-input-enhanced w-full px-3 py-2 rounded-lg text-sm"
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
                   <option value="">All Types</option>
                   {filterOptions.types.map((type) => (
@@ -193,7 +193,7 @@ export default function FilterBar({
                 <select
                   value={activeFilters.condition || ""}
                   onChange={(e) => handleFilterChange("condition", e.target.value)}
-                  className="glass-input-enhanced w-full px-3 py-2 rounded-lg text-sm"
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
                   <option value="">All Conditions</option>
                   {filterOptions.conditions.map((condition) => (

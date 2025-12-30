@@ -24,6 +24,7 @@ export default function SyncCatalogButton() {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Poll for status updates when sync is running
   useEffect(() => {
@@ -88,133 +89,203 @@ export default function SyncCatalogButton() {
   useEffect(() => {
     fetch('/api/pokemon/sync/status')
       .then(res => res.json())
-      .then(data => setStatus(data))
+      .then(data => {
+        setStatus(data);
+        // Auto-expand if sync is running
+        if (data.status === 'running') {
+          setIsExpanded(true);
+        }
+      })
       .catch(err => console.error('Error loading status:', err));
   }, []);
+
+  // Auto-expand when sync starts running
+  useEffect(() => {
+    if (status?.status === 'running') {
+      setIsExpanded(true);
+    }
+  }, [status?.status]);
 
   const isRunning = status?.status === 'running';
   const isCompleted = status?.status === 'completed';
   const hasError = status?.status === 'error';
 
   return (
-    <GlassCard className="p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)]">
+    <GlassCard className={`mb-6 transition-all duration-300 ${isExpanded ? 'p-6' : '!p-3'}`}>
+      {/* Header - Always visible */}
+      <div 
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-[var(--glass-black-dark)]">
             TCG Catalog Sync
           </h2>
-          <p className="text-sm text-[var(--glass-black-dark)]/70 mt-1">
-            Sync the entire Pokemon TCG database to your local Neon database for instant searches
-          </p>
+          {!isExpanded && status?.catalogStats && (
+            <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mt-1">
+              {status.catalogStats.totalCards.toLocaleString()} cards • 
+              Last synced: {status.catalogStats.lastSynced
+                ? new Date(status.catalogStats.lastSynced).toLocaleString()
+                : 'Never'}
+            </p>
+          )}
+          {isExpanded && (
+            <p className="text-sm text-[var(--glass-black-dark)]/70 mt-1">
+              Sync the entire Pokemon TCG database to your local Neon database for instant searches
+            </p>
+          )}
         </div>
-        <GlassButton
-          onClick={handleSync}
-          disabled={loading || isRunning}
-          variant={isRunning ? "glass" : "primary"}
-          className={isRunning ? "cursor-not-allowed opacity-50" : ""}
-        >
-          {loading ? 'Starting...' : isRunning ? 'Syncing...' : 'Start Sync'}
-        </GlassButton>
+        <div className="flex items-center gap-2 ml-4">
+          {!isRunning && (
+            <GlassButton
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSync();
+              }}
+              disabled={loading}
+              variant="primary"
+              className="text-sm px-4 py-2"
+            >
+              {loading ? 'Starting...' : 'Start Sync'}
+            </GlassButton>
+          )}
+          {isRunning && (
+            <GlassButton
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              disabled
+              variant="glass"
+              className="text-sm px-4 py-2 cursor-not-allowed opacity-50"
+            >
+              Syncing...
+            </GlassButton>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="p-2 rounded-full bg-[var(--glass-primary)] backdrop-blur-sm border border-white/30 hover:bg-[var(--glass-primary-dark)] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center shadow-lg"
+            aria-label="Toggle details"
+          >
+            <svg
+              className={`w-5 h-5 text-white transition-transform duration-300 ${
+                isExpanded ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {status && (
-        <div className="space-y-4">
-          {/* Catalog Stats */}
-          {status.catalogStats && (
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <GlassCard className="p-4 bg-blue-500/20 border-blue-400/30">
-                <div className="text-sm text-[var(--glass-black-dark)]/70">Total Cards</div>
-                <div className="text-2xl font-bold text-[var(--glass-black-dark)]">
-                  {status.catalogStats.totalCards.toLocaleString()}
-                </div>
-              </GlassCard>
-              <GlassCard className="p-4 bg-green-500/20 border-green-400/30">
-                <div className="text-sm text-[var(--glass-black-dark)]/70">Last Synced</div>
-                <div className="text-lg font-semibold text-[var(--glass-black-dark)]">
-                  {status.catalogStats.lastSynced
-                    ? new Date(status.catalogStats.lastSynced).toLocaleString()
-                    : 'Never'}
-                </div>
-              </GlassCard>
-            </div>
-          )}
-
-          {/* Progress Bar */}
-          {isRunning && (
-            <div>
-              <div className="flex justify-between text-sm text-[var(--glass-black-dark)]/70 mb-2">
-                <span>{status.message}</span>
-                <span>{status.progress}%</span>
-              </div>
-              <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-[var(--glass-primary)] h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${status.progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Status Details - Only show when running or completed, not on error */}
-          {(isRunning || isCompleted) && (
-            <GlassCard className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-[var(--glass-black-dark)]/70">Status</div>
-                  <div className={`font-semibold ${
-                    isRunning ? 'text-blue-600' :
-                    isCompleted ? 'text-green-600' :
-                    'text-[var(--glass-black-dark)]'
-                  }`}>
-                    {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[var(--glass-black-dark)]/70">Cards Processed</div>
-                  <div className="font-semibold text-[var(--glass-black-dark)]">
-                    {status.cardsProcessed.toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[var(--glass-black-dark)]/70">Inserted</div>
-                  <div className="font-semibold text-green-600">
-                    {status.cardsInserted.toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[var(--glass-black-dark)]/70">Updated</div>
-                  <div className="font-semibold text-blue-600">
-                    {status.cardsUpdated.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              
-              {status.totalPages > 0 && (
-                <div className="mt-3 text-sm text-[var(--glass-black-dark)]/70">
-                  Page {status.currentPage} of {status.totalPages}
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="mt-4 space-y-4">
+          {status && (
+            <>
+              {/* Catalog Stats */}
+              {status.catalogStats && (
+                <div className="grid grid-cols-2 gap-4">
+                  <GlassCard className="p-4 bg-blue-500/20 border-blue-400/30">
+                    <div className="text-sm text-[var(--glass-black-dark)]/70">Total Cards</div>
+                    <div className="text-2xl font-bold text-[var(--glass-black-dark)]">
+                      {status.catalogStats.totalCards.toLocaleString()}
+                    </div>
+                  </GlassCard>
+                  <GlassCard className="p-4 bg-green-500/20 border-green-400/30">
+                    <div className="text-sm text-[var(--glass-black-dark)]/70">Last Synced</div>
+                    <div className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                      {status.catalogStats.lastSynced
+                        ? new Date(status.catalogStats.lastSynced).toLocaleString()
+                        : 'Never'}
+                    </div>
+                  </GlassCard>
                 </div>
               )}
-            </GlassCard>
+
+              {/* Progress Bar */}
+              {isRunning && (
+                <div>
+                  <div className="flex justify-between text-sm text-[var(--glass-black-dark)]/70 mb-2">
+                    <span>{status.message}</span>
+                    <span>{status.progress}%</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-[var(--glass-primary)] h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${status.progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Status Details - Only show when running or completed, not on error */}
+              {(isRunning || isCompleted) && (
+                <GlassCard className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <div className="text-[var(--glass-black-dark)]/70">Status</div>
+                      <div className={`font-semibold ${
+                        isRunning ? 'text-blue-600' :
+                        isCompleted ? 'text-green-600' :
+                        'text-[var(--glass-black-dark)]'
+                      }`}>
+                        {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[var(--glass-black-dark)]/70">Cards Processed</div>
+                      <div className="font-semibold text-[var(--glass-black-dark)]">
+                        {status.cardsProcessed.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[var(--glass-black-dark)]/70">Inserted</div>
+                      <div className="font-semibold text-green-600">
+                        {status.cardsInserted.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[var(--glass-black-dark)]/70">Updated</div>
+                      <div className="font-semibold text-blue-600">
+                        {status.cardsUpdated.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {status.totalPages > 0 && (
+                    <div className="mt-3 text-sm text-[var(--glass-black-dark)]/70">
+                      Page {status.currentPage} of {status.totalPages}
+                    </div>
+                  )}
+                </GlassCard>
+              )}
+
+              {/* Completed Message */}
+              {isCompleted && (
+                <GlassCard className="p-4 bg-green-500/20 border-green-400/50">
+                  <div className="text-green-800 font-semibold">
+                    ✅ Sync completed successfully!
+                  </div>
+                  <div className="text-sm text-green-700 mt-1">
+                    Your catalog now has {status.cardsProcessed.toLocaleString()} cards. Searches will be instant!
+                  </div>
+                </GlassCard>
+              )}
+            </>
           )}
 
-          {/* Completed Message */}
-          {isCompleted && (
-            <GlassCard className="p-4 bg-green-500/20 border-green-400/50">
-              <div className="text-green-800 font-semibold">
-                ✅ Sync completed successfully!
-              </div>
-              <div className="text-sm text-green-700 mt-1">
-                Your catalog now has {status.cardsProcessed.toLocaleString()} cards. Searches will be instant!
-              </div>
-            </GlassCard>
-          )}
+          <div className="text-xs text-[var(--glass-black-dark)]/60">
+            💡 Tip: The sync runs in the background. You can leave this page and it will continue.
+            Check back later to see the progress!
+          </div>
         </div>
       )}
-
-      <div className="mt-4 text-xs text-[var(--glass-black-dark)]/60">
-        💡 Tip: The sync runs in the background. You can leave this page and it will continue.
-        Check back later to see the progress!
-      </div>
     </GlassCard>
   );
 }

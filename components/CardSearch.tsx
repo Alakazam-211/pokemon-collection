@@ -117,34 +117,34 @@ export default function CardSearch({ onSelectCard, onClose }: CardSearchProps) {
       </div>
 
       {showResults && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 max-h-96 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200">
+        <div className="absolute z-50 w-full mt-1 max-h-[60vh] sm:max-h-96 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200">
           {results.map((card) => (
             <button
               key={card.id}
               type="button"
               onClick={() => handleSelectCard(card)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-3 transition-colors"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left hover:bg-gray-100 active:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-2 sm:gap-3 transition-colors min-h-[60px] sm:min-h-0"
             >
               {card.images?.small && (
                 <img
                   src={card.images.small}
                   alt={card.name}
-                  className="w-16 h-22 object-contain flex-shrink-0 rounded"
+                  className="w-12 h-16 sm:w-16 sm:h-22 object-contain flex-shrink-0 rounded"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
               )}
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-[var(--glass-black-dark)] truncate">
+                <div className="font-semibold text-sm sm:text-base text-[var(--glass-black-dark)] truncate">
                   {card.name}
                 </div>
-                <div className="text-sm text-[var(--glass-black-dark)]/70">
+                <div className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70">
                   {card.set.name} • #{card.number}
                   {card.rarity && ` • ${card.rarity}`}
                 </div>
                 {card.tcgplayer?.prices && (
-                  <div className="text-xs text-green-600 mt-1">
+                  <div className="text-xs text-green-600 mt-0.5 sm:mt-1">
                     ${card.tcgplayer.prices.normal?.market?.toFixed(2) || 
                       card.tcgplayer.prices.normal?.mid?.toFixed(2) || 
                       card.tcgplayer.prices.normal?.low?.toFixed(2) || 

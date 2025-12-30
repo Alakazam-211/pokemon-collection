@@ -144,24 +144,18 @@ export default function TCGCollection() {
 
   return (
     <main className="min-h-screen">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
+        <div className="mb-6 sm:mb-8">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
                 TCG Collection
               </h1>
-              <p className="text-[var(--glass-black-dark)]/80 text-lg">
+              <p className="text-[var(--glass-black-dark)]/80 text-base sm:text-lg">
                 Browse {totalCount.toLocaleString()} cards from the Pokemon TCG database
               </p>
             </div>
-            <GlassButton
-              href="/"
-              variant="primary"
-            >
-              ← Back to Home
-            </GlassButton>
           </div>
         </div>
 
@@ -169,14 +163,14 @@ export default function TCGCollection() {
         <SyncCatalogButton />
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <div className="relative">
             <input
               type="text"
               placeholder="Search by name, set, or rarity..."
               value={searchTerm}
               onChange={handleSearchChange}
-              className="glass-input-enhanced w-full px-6 py-4 text-lg rounded-xl"
+              className="glass-input-enhanced w-full px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg rounded-xl min-h-[44px]"
             />
             {searchTerm && (
               <button
@@ -184,9 +178,9 @@ export default function TCGCollection() {
                   setSearchTerm("");
                   pageRef.current = 1;
                 }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--glass-black-dark)]/50 hover:text-[var(--glass-black-dark)]"
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-[var(--glass-black-dark)]/50 hover:text-[var(--glass-black-dark)] active:text-[var(--glass-black-dark)] min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -226,7 +220,7 @@ export default function TCGCollection() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-visible">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 overflow-visible">
               {cards.map((card) => {
                 const price = getCardPrice(card);
                 return (
@@ -344,25 +338,25 @@ export default function TCGCollection() {
       {/* Modal for larger card view */}
       {selectedCard && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
           onClick={() => setSelectedCard(null)}
         >
           <GlassCard
-            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto relative !bg-white"
+            className="max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto relative !bg-white mx-2 sm:mx-0"
             style={{ background: '#ffffff', backdropFilter: 'none' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
               <button
                 onClick={() => setSelectedCard(null)}
-                className="absolute top-4 right-4 z-10 glass-button rounded-full p-2 hover:bg-white/40 transition-colors"
+                className="absolute top-2 sm:top-4 right-2 sm:right-4 z-10 glass-button rounded-full p-2 hover:bg-white/40 active:bg-white/40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <svg className="w-6 h-6 text-[var(--glass-black-dark)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--glass-black-dark)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
               
-              <div className="grid md:grid-cols-2 gap-6 p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
                 <div className="flex items-center justify-center">
                   {selectedCard.images_large || selectedCard.images_small ? (
                     <img
@@ -393,12 +387,12 @@ export default function TCGCollection() {
                   )}
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <h2 className="text-3xl font-bold text-[var(--glass-black-dark)] mb-2">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[var(--glass-black-dark)] mb-2 break-words">
                       {selectedCard.name}
                     </h2>
-                    <p className="text-lg text-[var(--glass-black-dark)]/70">
+                    <p className="text-base sm:text-lg text-[var(--glass-black-dark)]/70">
                       {selectedCard.set_name} {selectedCard.number && `#${selectedCard.number}`}
                     </p>
                   </div>
@@ -411,35 +405,35 @@ export default function TCGCollection() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/30">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/30">
                     {selectedCard.supertype && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">Type</p>
-                        <p className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Type</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
                           {selectedCard.supertype}
                         </p>
                       </div>
                     )}
                     {selectedCard.hp && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">HP</p>
-                        <p className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">HP</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
                           {selectedCard.hp}
                         </p>
                       </div>
                     )}
                     {selectedCard.types && selectedCard.types.length > 0 && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">Types</p>
-                        <p className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Types</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
                           {selectedCard.types.join(", ")}
                         </p>
                       </div>
                     )}
                     {selectedCard.artist && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">Artist</p>
-                        <p className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Artist</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
                           {selectedCard.artist}
                         </p>
                       </div>
@@ -455,33 +449,33 @@ export default function TCGCollection() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/30">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/30">
                     {selectedCard.price_normal_market && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">Market Price</p>
-                        <p className="text-xl font-bold text-[var(--glass-primary)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Market Price</p>
+                        <p className="text-lg sm:text-xl font-bold text-[var(--glass-primary)]">
                           ${selectedCard.price_normal_market.toFixed(2)}
                         </p>
                       </div>
                     )}
                     {selectedCard.price_normal_mid && (
                       <div>
-                        <p className="text-sm text-[var(--glass-black-dark)]/70 mb-1">Mid Price</p>
-                        <p className="text-lg font-semibold text-[var(--glass-black-dark)]">
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Mid Price</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
                           ${selectedCard.price_normal_mid.toFixed(2)}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-4 pt-4">
+                  <div className="flex flex-col gap-3 sm:gap-4 pt-4">
                     <GlassButton
                       onClick={() => {
                         setCardToAdd(selectedCard);
                         setSelectedCard(null);
                       }}
                       variant="primary"
-                      className="w-full"
+                      className="w-full min-h-[44px]"
                     >
                       Add to Collection
                     </GlassButton>
@@ -490,7 +484,7 @@ export default function TCGCollection() {
                         href={selectedCard.tcgplayer_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="glass-button px-6 py-3 rounded-full font-semibold transition-all duration-300 text-center hover:bg-white/40 hover:-translate-y-0.5 w-full"
+                        className="glass-button px-4 sm:px-6 py-3 rounded-full font-semibold transition-all duration-300 text-center hover:bg-white/40 active:bg-white/40 hover:-translate-y-0.5 w-full min-h-[44px] flex items-center justify-center"
                       >
                         View on TCGPlayer →
                       </a>

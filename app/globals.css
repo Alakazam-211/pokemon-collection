@@ -252,7 +252,11 @@ button, a {
 
 @media (max-width: 640px) {
   /* Minimum touch target size (44x44px) */
-  button, a, input, textarea, select {
+  button:not(.no-touch-target), 
+  a:not(.no-touch-target), 
+  input, 
+  textarea, 
+  select {
     min-height: 44px;
   }
   
@@ -267,12 +271,27 @@ button, a {
     overflow-x: hidden;
     max-width: 100vw;
   }
+  
+  /* Better spacing on mobile */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Optimize glass effects for mobile performance */
+  .glass-card,
+  .glass-button,
+  .glass-input-enhanced {
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+  }
 }
 
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
   /* Larger touch targets */
-  button, a {
+  button:not(.no-touch-target), 
+  a:not(.no-touch-target) {
     min-height: 44px;
     min-width: 44px;
   }
@@ -281,6 +300,21 @@ button, a {
   .glass-card:hover,
   .glass-button:hover {
     transform: none;
+  }
+  
+  /* Better tap feedback */
+  button:active,
+  a:active {
+    opacity: 0.8;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Slightly reduced spacing for tablets */
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 }
 

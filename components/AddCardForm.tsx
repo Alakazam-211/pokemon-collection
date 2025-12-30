@@ -84,7 +84,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         <button
           type="button"
           onClick={() => setUseSearch(true)}
-          className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] ${
             useSearch
               ? "bg-[var(--glass-primary)] text-white shadow-lg"
               : "glass-button text-[var(--glass-black-dark)]"
@@ -95,7 +95,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         <button
           type="button"
           onClick={() => setUseSearch(false)}
-          className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] ${
             !useSearch
               ? "bg-[var(--glass-primary)] text-white shadow-lg"
               : "glass-button text-[var(--glass-black-dark)]"
@@ -117,13 +117,13 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+          className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
           placeholder="e.g., Pikachu VMAX"
           required
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Set *
@@ -132,7 +132,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             type="text"
             value={formData.set}
             onChange={(e) => setFormData({ ...formData, set: e.target.value })}
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
             placeholder="e.g., Base Set"
             required
           />
@@ -146,13 +146,13 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             type="text"
             value={formData.number}
             onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
             placeholder="e.g., 25/102"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Rarity
@@ -161,7 +161,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             type="text"
             value={formData.rarity}
             onChange={(e) => setFormData({ ...formData, rarity: e.target.value })}
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
             placeholder="e.g., Ultra Rare"
           />
         </div>
@@ -178,7 +178,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
                 condition: e.target.value as PokemonCard["condition"],
               })
             }
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
           >
             <option value="Mint">Mint</option>
             <option value="Near Mint">Near Mint</option>
@@ -190,7 +190,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-1">
             Value ($) *
@@ -201,7 +201,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             min="0"
             value={formData.value}
             onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
             placeholder="0.00"
             required
           />
@@ -216,7 +216,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             min="1"
             value={formData.quantity}
             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-            className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+            className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
           />
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
           type="url"
           value={formData.imageUrl}
           onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+          className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
           placeholder="https://example.com/image.jpg"
         />
       </div>
@@ -264,7 +264,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
                   setFormData({ ...formData, psaRating: value });
                 }
               }}
-              className="glass-input-enhanced w-full px-4 py-3 rounded-xl"
+              className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
               placeholder="Enter PSA rating (1-10)"
               required={formData.isPsa}
             />

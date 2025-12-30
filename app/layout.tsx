@@ -37,7 +37,7 @@ export default function RootLayout({
           ]}
           primaryColor="rgba(59, 76, 202, 0.95)"
         />
-        <div className="pt-24 pb-8">
+        <div className="pt-20 sm:pt-24 pb-6 sm:pb-8">
           {children}
         </div>
       </body>

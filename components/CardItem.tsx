@@ -35,37 +35,39 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
   const totalValue = card.value * card.quantity;
 
   return (
-    <GlassCard className="p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
+    <GlassCard className="p-3 sm:p-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2 sm:gap-3 mb-2">
             {card.imageUrl && (
               <img
                 src={card.imageUrl}
                 alt={card.name}
-                className="w-16 h-20 object-cover rounded-lg border-2 border-white/50"
+                className="w-12 h-16 sm:w-16 sm:h-20 object-cover rounded-lg border-2 border-white/50 flex-shrink-0"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
             )}
-            <div>
-              <h3 className="font-semibold text-[var(--glass-black-dark)] text-lg">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-[var(--glass-black-dark)] text-base sm:text-lg break-words">
                 {card.name}
               </h3>
-              <p className="text-sm text-[var(--glass-black-dark)]/70">
+              <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70">
                 {card.set} {card.number && `#${card.number}`}
               </p>
-              {card.rarity && (
-                <span className="inline-block mt-1 px-2 py-1 text-xs font-medium glass-button rounded-full">
-                  {card.rarity}
-                </span>
-              )}
-              {card.isPsa && card.psaRating && (
-                <span className="inline-block mt-1 px-2 py-1 text-xs font-bold bg-yellow-500/20 text-yellow-800 rounded-full border border-yellow-500/30">
-                  PSA {card.psaRating}
-                </span>
-              )}
+              <div className="flex flex-wrap gap-1 mt-1">
+                {card.rarity && (
+                  <span className="inline-block px-2 py-0.5 sm:py-1 text-xs font-medium glass-button rounded-full">
+                    {card.rarity}
+                  </span>
+                )}
+                {card.isPsa && card.psaRating && (
+                  <span className="inline-block px-2 py-0.5 sm:py-1 text-xs font-bold bg-yellow-500/20 text-yellow-800 rounded-full border border-yellow-500/30">
+                    PSA {card.psaRating}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -228,11 +230,11 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
         </div>
 
         {!isEditing && (
-          <div className="flex flex-col gap-2 ml-4">
+          <div className="flex flex-row sm:flex-col gap-2 sm:ml-4 w-full sm:w-auto">
             <GlassButton
               onClick={() => setIsEditing(true)}
               variant="primary"
-              className="px-3 py-1 text-xs"
+              className="px-3 py-2 sm:py-1 text-xs flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
             >
               Edit
             </GlassButton>
@@ -249,7 +251,7 @@ export default function CardItem({ card, onRemove, onUpdate }: CardItemProps) {
                 }
               }}
               variant="outline"
-              className="px-3 py-1 text-xs border-red-500 text-red-600 hover:bg-red-500/10"
+              className="px-3 py-2 sm:py-1 text-xs border-red-500 text-red-600 hover:bg-red-500/10 flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
               type="button"
             >
               Remove

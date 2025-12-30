@@ -125,18 +125,18 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
             Pokémon Card Collection
           </h1>
-          <p className="text-[var(--glass-black-dark)]/80 mb-6 text-lg">
+          <p className="text-[var(--glass-black-dark)]/80 mb-4 sm:mb-6 text-base sm:text-lg">
             Track your collection and total deck value
           </p>
           <GlassButton
             href="/collection"
             variant="primary"
-            className="text-lg"
+            className="text-base sm:text-lg"
           >
             🎴 Explore Collection
           </GlassButton>
@@ -158,16 +158,16 @@ export default function Home() {
 
         <CollectionStatsDisplay stats={stats} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          <GlassCard className="p-6">
-            <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
+          <GlassCard className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
               Add New Card
             </h2>
             <AddCardForm onAdd={addCard} />
           </GlassCard>
 
-          <GlassCard className="p-6">
-            <h2 className="text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
+          <GlassCard className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-[var(--glass-black-dark)] mb-4">
               Your Collection ({cards.length} {cards.length === 1 ? "card" : "cards"})
             </h2>
             {loading ? (
