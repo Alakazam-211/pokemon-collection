@@ -56,10 +56,38 @@ export async function GET(request: NextRequest) {
                       (typeFilter && typeFilter.trim());
 
     if (hasFilters) {
-      // Build WHERE clause using sql.query() to avoid nested template issues
-
-      // Build query with all conditions in a single sql template
-      if (searchPattern && setFilter && setFilter.trim() && rarityFilter && rarityFilter.trim() && seriesFilter && seriesFilter.trim() && typeFilter && typeFilter.trim()) {
+      
+      // Build conditions dynamically - collect all filter values first
+      const filterValues: any[] = [];
+      const conditions: string[] = [];
+      
+      if (searchPattern) {
+        conditions.push(`(name ILIKE $${filterValues.length + 1} OR set_name ILIKE $${filterValues.length + 1} OR rarity ILIKE $${filterValues.length + 1})`);
+        filterValues.push(searchPattern, searchPattern, searchPattern);
+      }
+      if (setFilter && setFilter.trim()) {
+        conditions.push(`set_name = $${filterValues.length + 1}`);
+        filterValues.push(setFilter);
+      }
+      if (rarityFilter && rarityFilter.trim()) {
+        conditions.push(`rarity = $${filterValues.length + 1}`);
+        filterValues.push(rarityFilter);
+      }
+      if (seriesFilter && seriesFilter.trim()) {
+        conditions.push(`set_series = $${filterValues.length + 1}`);
+        filterValues.push(seriesFilter);
+      }
+      if (typeFilter && typeFilter.trim()) {
+        conditions.push(`types IS NOT NULL AND $${filterValues.length + 1} IN (SELECT unnest(types))`);
+        filterValues.push(typeFilter);
+      }
+      
+      const whereClause = conditions.join(' AND ');
+      
+      // Build query using sql template tag with conditional WHERE conditions
+      // This properly handles parameterization without type inference issues
+      if (filterValues.length === 3 && searchPattern && !setFilter && !rarityFilter && !seriesFilter && !typeFilter) {
+        // Only search pattern - use sql template tag directly
         query = sql`
           SELECT 
             id, name, supertype, subtypes, hp, types,
@@ -70,10 +98,6 @@ export async function GET(request: NextRequest) {
             price_holofoil_market, price_holofoil_mid
           FROM tcg_catalog
           WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
-            AND set_name = ${setFilter}
-            AND rarity = ${rarityFilter}
-            AND set_series = ${seriesFilter}
-            AND types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))
           ORDER BY name ASC, set_name ASC, number ASC
           LIMIT ${limit}
           OFFSET ${offset}
@@ -82,42 +106,34 @@ export async function GET(request: NextRequest) {
           SELECT COUNT(*) as total
           FROM tcg_catalog
           WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
-            AND set_name = ${setFilter}
-            AND rarity = ${rarityFilter}
-            AND set_series = ${seriesFilter}
-            AND types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))
         `;
       } else {
-        // Build conditions dynamically using sql.query() to avoid nested template issues
-        const whereParts: string[] = [];
-        const queryParams: any[] = [];
+        // Multiple filters - build conditions using sql template tag with sql.raw()
+        // Collect conditions as sql fragments
+        const sqlConditions: any[] = [];
         
         if (searchPattern) {
-          whereParts.push(`(name ILIKE $${queryParams.length + 1} OR set_name ILIKE $${queryParams.length + 1} OR rarity ILIKE $${queryParams.length + 1})`);
-          queryParams.push(searchPattern, searchPattern, searchPattern);
+          sqlConditions.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
         }
         if (setFilter && setFilter.trim()) {
-          whereParts.push(`set_name = $${queryParams.length + 1}`);
-          queryParams.push(setFilter);
+          sqlConditions.push(sql`set_name = ${setFilter}`);
         }
         if (rarityFilter && rarityFilter.trim()) {
-          whereParts.push(`rarity = $${queryParams.length + 1}`);
-          queryParams.push(rarityFilter);
+          sqlConditions.push(sql`rarity = ${rarityFilter}`);
         }
         if (seriesFilter && seriesFilter.trim()) {
-          whereParts.push(`set_series = $${queryParams.length + 1}`);
-          queryParams.push(seriesFilter);
+          sqlConditions.push(sql`set_series = ${seriesFilter}`);
         }
         if (typeFilter && typeFilter.trim()) {
-          whereParts.push(`types IS NOT NULL AND $${queryParams.length + 1} IN (SELECT unnest(types))`);
-          queryParams.push(typeFilter);
+          sqlConditions.push(sql`types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))`);
         }
         
-        const whereClause = whereParts.join(' AND ');
-        const allParams = [...queryParams, limit, offset];
+        // Combine conditions with AND
+        const whereCondition = sqlConditions.reduce((acc, condition, idx) => 
+          idx === 0 ? condition : sql`${acc} AND ${condition}`
+        );
         
-        // Use sql.query() which properly handles parameterization
-        query = sql.query(`
+        query = sql`
           SELECT 
             id, name, supertype, subtypes, hp, types,
             set_id, set_name, set_series, number, artist, rarity, flavor_text,
@@ -126,17 +142,17 @@ export async function GET(request: NextRequest) {
             price_normal_market, price_normal_mid, price_normal_low,
             price_holofoil_market, price_holofoil_mid
           FROM tcg_catalog
-          WHERE ${whereClause}
+          WHERE ${whereCondition}
           ORDER BY name ASC, set_name ASC, number ASC
-          LIMIT $${queryParams.length + 1}
-          OFFSET $${queryParams.length + 2}
-        `, allParams);
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
         
-        countQuery = sql.query(`
+        countQuery = sql`
           SELECT COUNT(*) as total
           FROM tcg_catalog
-          WHERE ${whereClause}
-        `, queryParams);
+          WHERE ${whereCondition}
+        `;
       }
     } else {
       query = sql`

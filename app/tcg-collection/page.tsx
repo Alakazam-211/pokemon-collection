@@ -14,7 +14,8 @@ export default function TCGCollection() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Input value (updates immediately)
+  const [searchTerm, setSearchTerm] = useState(""); // Actual search term (debounced)
   const [selectedCard, setSelectedCard] = useState<TCGCatalogCard | null>(null);
   const [cardToAdd, setCardToAdd] = useState<TCGCatalogCard | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>({});
@@ -23,7 +24,19 @@ export default function TCGCollection() {
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const pageRef = useRef(1);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTermRef = useRef(searchTerm);
+  const filtersRef = useRef(filters);
   const limit = 50;
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    searchTermRef.current = searchTerm;
+  }, [searchTerm]);
+  
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   // Load filter options on mount
   useEffect(() => {
@@ -40,17 +53,37 @@ export default function TCGCollection() {
       .catch((err) => console.error("Error loading filter options:", err));
   }, []);
 
+  // Debounce search input - update searchTerm after user stops typing
   useEffect(() => {
-    // Reset when search term or filters change
-    setCards([]);
-    pageRef.current = 1;
-    setHasMore(true);
-    fetchCards(true);
-  }, [searchTerm, filters]);
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout to update searchTerm after 500ms of no typing
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 500);
+    
+    // Cleanup timeout on unmount or when searchInput changes
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInput]); // Removed searchTerm from dependencies to prevent loop
 
-  const fetchCards = async (reset = false) => {
+  // Memoize fetchCards - use refs to avoid circular dependencies
+  const fetchCards = useCallback(async (reset = false) => {
+    // Use refs to get latest values without causing re-renders
+    const currentSearchTerm = searchTermRef.current;
+    const currentFilters = filtersRef.current;
+    
     try {
       if (reset) {
+        // Don't clear cards immediately - keep them visible until new ones arrive
+        // This prevents the "reload" feeling
+        // Only set loading state, don't clear cards yet
         setLoading(true);
         pageRef.current = 1;
       } else {
@@ -59,26 +92,26 @@ export default function TCGCollection() {
       setError(null);
       const currentPage = pageRef.current;
       
-      // Build query params
+      // Build query params using ref values
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: limit.toString(),
       });
       
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      if (currentSearchTerm) {
+        params.append('search', currentSearchTerm);
       }
-      if (filters.set) {
-        params.append('set', filters.set);
+      if (currentFilters.set) {
+        params.append('set', currentFilters.set);
       }
-      if (filters.rarity) {
-        params.append('rarity', filters.rarity);
+      if (currentFilters.rarity) {
+        params.append('rarity', currentFilters.rarity);
       }
-      if (filters.series) {
-        params.append('series', filters.series);
+      if (currentFilters.series) {
+        params.append('series', currentFilters.series);
       }
-      if (filters.type) {
-        params.append('type', filters.type);
+      if (currentFilters.type) {
+        params.append('type', currentFilters.type);
       }
       
       const response = await fetch(`/api/tcg-catalog?${params.toString()}`);
@@ -99,23 +132,38 @@ export default function TCGCollection() {
       setTotalCount(data.pagination.total);
       setHasMore(currentPage < data.pagination.totalPages);
       
-      if (!reset) {
-        pageRef.current += 1;
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
       }
     } catch (err) {
-      console.error("Error fetching cards:", err);
-      setError("Failed to load cards. Please check your database connection.");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      setError(err instanceof Error ? err.message : "Failed to fetch cards");
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
-  };
+  }, [limit]); // Only depend on limit, use refs for searchTerm and filters
+
+  // Fetch cards when searchTerm or filters change (debounced searchTerm)
+  useEffect(() => {
+    // Reset when search term or filters change
+    // Don't clear cards or set loading here - let fetchCards handle it
+    // This prevents the "reload" feeling - cards stay visible until new ones arrive
+    pageRef.current = 1;
+    setHasMore(true);
+    fetchCards(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, filters]); // Don't include fetchCards to avoid circular dependency
+
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && !loading) {
       fetchCards(false);
     }
-  }, [loadingMore, hasMore, loading, searchTerm]);
+  }, [loadingMore, hasMore, loading, fetchCards]);
 
   const observerTarget = useInfiniteScroll({
     hasMore,
@@ -124,7 +172,7 @@ export default function TCGCollection() {
   });
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    setSearchInput(e.target.value);
   };
 
   const getCardPrice = (card: TCGCatalogCard): number | null => {
@@ -170,15 +218,15 @@ export default function TCGCollection() {
             <input
               type="text"
               placeholder="Search by name, set, or rarity..."
-              value={searchTerm}
+              value={searchInput}
               onChange={handleSearchChange}
               className="glass-input-enhanced w-full px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg rounded-xl min-h-[44px]"
             />
-            {searchTerm && (
+            {searchInput && (
               <button
                 onClick={() => {
+                  setSearchInput("");
                   setSearchTerm("");
-                  pageRef.current = 1;
                 }}
                 className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-[var(--glass-black-dark)]/50 hover:text-[var(--glass-black-dark)] active:text-[var(--glass-black-dark)] min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
