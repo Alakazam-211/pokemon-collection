@@ -4,7 +4,8 @@ import { sql } from '@vercel/postgres';
 export async function GET(request: NextRequest) {
   try {
     // Get unique values for filters from user's collection
-    const [setsResult, raritiesResult, conditionsResult] = await Promise.all([
+    // For types, we need to join with tcg_catalog to get type information
+    const [setsResult, raritiesResult, conditionsResult, typesResult] = await Promise.all([
       // Unique set names
       sql`
         SELECT DISTINCT set
@@ -19,10 +20,13 @@ export async function GET(request: NextRequest) {
         WHERE rarity IS NOT NULL AND rarity != ''
         ORDER BY rarity ASC
       `,
-      // Unique conditions
+      // Unique conditions - use subquery to allow ORDER BY with CASE expression
       sql`
-        SELECT DISTINCT condition
-        FROM pokemon_cards
+        SELECT condition
+        FROM (
+          SELECT DISTINCT condition
+          FROM pokemon_cards
+        ) AS distinct_conditions
         ORDER BY 
           CASE condition
             WHEN 'Mint' THEN 1
@@ -34,12 +38,30 @@ export async function GET(request: NextRequest) {
             ELSE 7
           END
       `,
+      // Unique types - join with tcg_catalog to get types for cards in collection
+      sql`
+        SELECT DISTINCT unnest(tc.types) as type
+        FROM pokemon_cards pc
+        INNER JOIN tcg_catalog tc ON (
+          pc.name = tc.name 
+          AND pc.set = tc.set_name
+          AND (pc.number = tc.number OR (pc.number IS NULL AND tc.number IS NULL))
+        )
+        WHERE tc.types IS NOT NULL AND array_length(tc.types, 1) > 0
+        ORDER BY type ASC
+      `,
     ]);
 
+    const sets = setsResult.rows.map(row => row.set);
+    const rarities = raritiesResult.rows.map(row => row.rarity);
+    const conditions = conditionsResult.rows.map(row => row.condition);
+    const types = typesResult.rows.map(row => row.type);
+
     return NextResponse.json({
-      sets: setsResult.rows.map(row => row.set),
-      rarities: raritiesResult.rows.map(row => row.rarity),
-      conditions: conditionsResult.rows.map(row => row.condition),
+      sets,
+      rarities,
+      conditions,
+      types,
     });
   } catch (error) {
     console.error('Error fetching filter options:', error);

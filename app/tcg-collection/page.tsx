@@ -83,7 +83,9 @@ export default function TCGCollection() {
       
       const response = await fetch(`/api/tcg-catalog?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch cards");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Failed to fetch cards (${response.status})`;
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       

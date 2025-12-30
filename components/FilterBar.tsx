@@ -204,6 +204,27 @@ export default function FilterBar({
                 </select>
               </div>
             )}
+
+            {/* Type Filter (for Collection) */}
+            {variant === "collection" && filterOptions.types && filterOptions.types.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-2">
+                  Type
+                </label>
+                <select
+                  value={activeFilters.type || ""}
+                  onChange={(e) => handleFilterChange("type", e.target.value)}
+                  className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
+                >
+                  <option value="">All Types</option>
+                  {filterOptions.types.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         )}
 

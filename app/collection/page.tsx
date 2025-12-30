@@ -30,6 +30,7 @@ export default function CollectionExplorer() {
           sets: data.sets || [],
           rarities: data.rarities || [],
           conditions: data.conditions || [],
+          types: data.types || [],
         });
       })
       .catch((err) => console.error("Error loading filter options:", err));
@@ -72,6 +73,9 @@ export default function CollectionExplorer() {
       }
       if (filters.condition) {
         params.append('condition', filters.condition);
+      }
+      if (filters.type) {
+        params.append('type', filters.type);
       }
       
       const response = await fetch(`/api/cards?${params.toString()}`);

@@ -47,61 +47,97 @@ export async function GET(request: NextRequest) {
     let countQuery;
 
     const searchPattern = search ? `%${search}%` : null;
+    
+    // Check if we have any actual filter values (not just empty strings)
+    const hasFilters = (search && search.trim()) || 
+                      (setFilter && setFilter.trim()) || 
+                      (rarityFilter && rarityFilter.trim()) || 
+                      (seriesFilter && seriesFilter.trim()) || 
+                      (typeFilter && typeFilter.trim());
 
-    if (search || setFilter || rarityFilter || seriesFilter || typeFilter) {
-      // Build WHERE clause conditionally
-      let whereClause: any;
-      const parts: any[] = [];
-      
-      if (searchPattern) {
-        parts.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
-      }
-      if (setFilter) {
-        parts.push(sql`set_name = ${setFilter}`);
-      }
-      if (rarityFilter) {
-        parts.push(sql`rarity = ${rarityFilter}`);
-      }
-      if (seriesFilter) {
-        parts.push(sql`set_series = ${seriesFilter}`);
-      }
-      if (typeFilter) {
-        parts.push(sql`${typeFilter} = ANY(types)`);
-      }
+    if (hasFilters) {
+      // Build WHERE clause using sql.query() to avoid nested template issues
 
-      // Build whereClause by combining parts
-      if (parts.length === 1) {
-        whereClause = parts[0];
-      } else if (parts.length === 2) {
-        whereClause = sql`${parts[0]} AND ${parts[1]}`;
-      } else if (parts.length === 3) {
-        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]}`;
-      } else if (parts.length === 4) {
-        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]} AND ${parts[3]}`;
-      } else if (parts.length === 5) {
-        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]} AND ${parts[3]} AND ${parts[4]}`;
+      // Build query with all conditions in a single sql template
+      if (searchPattern && setFilter && setFilter.trim() && rarityFilter && rarityFilter.trim() && seriesFilter && seriesFilter.trim() && typeFilter && typeFilter.trim()) {
+        query = sql`
+          SELECT 
+            id, name, supertype, subtypes, hp, types,
+            set_id, set_name, set_series, number, artist, rarity, flavor_text,
+            national_pokedex_numbers, images_small, images_large,
+            tcgplayer_url, cardmarket_url,
+            price_normal_market, price_normal_mid, price_normal_low,
+            price_holofoil_market, price_holofoil_mid
+          FROM tcg_catalog
+          WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
+            AND set_name = ${setFilter}
+            AND rarity = ${rarityFilter}
+            AND set_series = ${seriesFilter}
+            AND types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))
+          ORDER BY name ASC, set_name ASC, number ASC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+        countQuery = sql`
+          SELECT COUNT(*) as total
+          FROM tcg_catalog
+          WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
+            AND set_name = ${setFilter}
+            AND rarity = ${rarityFilter}
+            AND set_series = ${seriesFilter}
+            AND types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))
+        `;
+      } else {
+        // Build conditions dynamically using sql.query() to avoid nested template issues
+        const whereParts: string[] = [];
+        const queryParams: any[] = [];
+        
+        if (searchPattern) {
+          whereParts.push(`(name ILIKE $${queryParams.length + 1} OR set_name ILIKE $${queryParams.length + 1} OR rarity ILIKE $${queryParams.length + 1})`);
+          queryParams.push(searchPattern, searchPattern, searchPattern);
+        }
+        if (setFilter && setFilter.trim()) {
+          whereParts.push(`set_name = $${queryParams.length + 1}`);
+          queryParams.push(setFilter);
+        }
+        if (rarityFilter && rarityFilter.trim()) {
+          whereParts.push(`rarity = $${queryParams.length + 1}`);
+          queryParams.push(rarityFilter);
+        }
+        if (seriesFilter && seriesFilter.trim()) {
+          whereParts.push(`set_series = $${queryParams.length + 1}`);
+          queryParams.push(seriesFilter);
+        }
+        if (typeFilter && typeFilter.trim()) {
+          whereParts.push(`types IS NOT NULL AND $${queryParams.length + 1} IN (SELECT unnest(types))`);
+          queryParams.push(typeFilter);
+        }
+        
+        const whereClause = whereParts.join(' AND ');
+        const allParams = [...queryParams, limit, offset];
+        
+        // Use sql.query() which properly handles parameterization
+        query = sql.query(`
+          SELECT 
+            id, name, supertype, subtypes, hp, types,
+            set_id, set_name, set_series, number, artist, rarity, flavor_text,
+            national_pokedex_numbers, images_small, images_large,
+            tcgplayer_url, cardmarket_url,
+            price_normal_market, price_normal_mid, price_normal_low,
+            price_holofoil_market, price_holofoil_mid
+          FROM tcg_catalog
+          WHERE ${whereClause}
+          ORDER BY name ASC, set_name ASC, number ASC
+          LIMIT $${queryParams.length + 1}
+          OFFSET $${queryParams.length + 2}
+        `, allParams);
+        
+        countQuery = sql.query(`
+          SELECT COUNT(*) as total
+          FROM tcg_catalog
+          WHERE ${whereClause}
+        `, queryParams);
       }
-
-      query = sql`
-        SELECT 
-          id, name, supertype, subtypes, hp, types,
-          set_id, set_name, set_series, number, artist, rarity, flavor_text,
-          national_pokedex_numbers, images_small, images_large,
-          tcgplayer_url, cardmarket_url,
-          price_normal_market, price_normal_mid, price_normal_low,
-          price_holofoil_market, price_holofoil_mid
-        FROM tcg_catalog
-        WHERE ${whereClause}
-        ORDER BY name ASC, set_name ASC, number ASC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      
-      countQuery = sql`
-        SELECT COUNT(*) as total
-        FROM tcg_catalog
-        WHERE ${whereClause}
-      `;
     } else {
       query = sql`
         SELECT 
@@ -142,8 +178,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching TCG catalog:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch TCG catalog cards';
     return NextResponse.json(
-      { error: 'Failed to fetch TCG catalog cards' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
