@@ -1,11 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllCards, createCard } from '@/lib/db';
+import { sql } from '@vercel/postgres';
+import { createCard } from '@/lib/db';
 import { PokemonCard } from '@/types/pokemon';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cards = await getAllCards();
-    return NextResponse.json(cards);
+    const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const setFilter = searchParams.get('set') || '';
+    const rarityFilter = searchParams.get('rarity') || '';
+    const conditionFilter = searchParams.get('condition') || '';
+    const offset = (page - 1) * limit;
+
+    // Build query with filters
+    let countQuery;
+    let query;
+
+    if (setFilter || rarityFilter || conditionFilter) {
+      const conditions = [];
+      
+      if (setFilter) {
+        conditions.push(sql`set = ${setFilter}`);
+      }
+      if (rarityFilter) {
+        conditions.push(sql`rarity = ${rarityFilter}`);
+      }
+      if (conditionFilter) {
+        conditions.push(sql`condition = ${conditionFilter}`);
+      }
+
+      const whereCondition = conditions.reduce((acc, condition, index) => {
+        if (index === 0) return condition;
+        return sql`${acc} AND ${condition}`;
+      });
+
+      countQuery = sql`
+        SELECT COUNT(*) as total
+        FROM pokemon_cards
+        WHERE ${whereCondition}
+      `;
+
+      query = sql`
+        SELECT 
+          id,
+          name,
+          set,
+          number,
+          rarity,
+          condition,
+          value,
+          quantity,
+          image_url as "imageUrl",
+          is_psa as "isPsa",
+          psa_rating as "psaRating",
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+        FROM pokemon_cards
+        WHERE ${whereCondition}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+    } else {
+      countQuery = sql`
+        SELECT COUNT(*) as total
+        FROM pokemon_cards
+      `;
+
+      query = sql`
+        SELECT 
+          id,
+          name,
+          set,
+          number,
+          rarity,
+          condition,
+          value,
+          quantity,
+          image_url as "imageUrl",
+          is_psa as "isPsa",
+          psa_rating as "psaRating",
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+        FROM pokemon_cards
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+    }
+
+    const [countResult, rowsResult] = await Promise.all([
+      countQuery,
+      query,
+    ]);
+
+    const totalCount = parseInt(countResult.rows[0]?.total || '0');
+    const { rows } = rowsResult;
+    
+    const cards: PokemonCard[] = rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      set: row.set,
+      number: row.number || '',
+      rarity: row.rarity || '',
+      condition: row.condition as PokemonCard['condition'],
+      value: parseFloat(row.value),
+      quantity: row.quantity,
+      imageUrl: row.imageUrl || undefined,
+      isPsa: row.isPsa || false,
+      psaRating: row.psaRating || undefined,
+    }));
+
+    return NextResponse.json({
+      data: cards,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
   } catch (error) {
     console.error('Error fetching cards:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

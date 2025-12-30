@@ -1,48 +1,132 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PokemonCard } from "@/types/pokemon";
 import GlassCard from "@/components/GlassCard";
 import GlassButton from "@/components/GlassButton";
+import FilterBar, { FilterOptions, ActiveFilters } from "@/components/FilterBar";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 export default function CollectionExplorer() {
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCard, setSelectedCard] = useState<PokemonCard | null>(null);
+  const [filters, setFilters] = useState<ActiveFilters>({});
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({});
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
+  const limit = 50;
 
+  // Load filter options on mount
   useEffect(() => {
-    fetchCards();
+    fetch("/api/cards/filters")
+      .then((res) => res.json())
+      .then((data) => {
+        setFilterOptions({
+          sets: data.sets || [],
+          rarities: data.rarities || [],
+          conditions: data.conditions || [],
+        });
+      })
+      .catch((err) => console.error("Error loading filter options:", err));
   }, []);
 
-  const fetchCards = async () => {
+  useEffect(() => {
+    // Initial load or reload when search or filters change
+    const shouldReload = !searchTerm;
+    if (shouldReload) {
+      setCards([]);
+      pageRef.current = 1;
+      setHasMore(true);
+      fetchCards(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, filters]);
+
+  const fetchCards = async (reset = false) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        pageRef.current = 1;
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
-      const response = await fetch("/api/cards");
+      const currentPage = pageRef.current;
+      
+      // Build query params
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (filters.set) {
+        params.append('set', filters.set);
+      }
+      if (filters.rarity) {
+        params.append('rarity', filters.rarity);
+      }
+      if (filters.condition) {
+        params.append('condition', filters.condition);
+      }
+      
+      const response = await fetch(`/api/cards?${params.toString()}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.details || errorData.error || "Failed to fetch cards";
         throw new Error(errorMessage);
       }
       const data = await response.json();
-      setCards(data);
+      
+      if (reset) {
+        setCards(data.data);
+      } else {
+        setCards(prev => [...prev, ...data.data]);
+      }
+      
+      setTotalCount(data.pagination.total);
+      setHasMore(currentPage < data.pagination.totalPages);
+      
+      if (!reset) {
+        pageRef.current += 1;
+      }
     } catch (err) {
       console.error("Error fetching cards:", err);
       setError(err instanceof Error ? err.message : "Failed to load cards. Please check your database connection.");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  const filteredCards = cards.filter(
-    (card) =>
-      card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.set.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.rarity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (card.number && card.number.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loading && !searchTerm) {
+      fetchCards(false);
+    }
+  }, [loadingMore, hasMore, loading, searchTerm]);
+
+  const observerTarget = useInfiniteScroll({
+    hasMore: hasMore && !searchTerm,
+    loading: loadingMore,
+    onLoadMore: loadMore,
+  });
+
+  const filteredCards = useMemo(() => {
+    if (!searchTerm) {
+      return cards;
+    }
+    return cards.filter(
+      (card) =>
+        card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        card.set.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        card.rarity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (card.number && card.number.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [cards, searchTerm]);
 
   if (loading) {
     return (
@@ -68,7 +152,7 @@ export default function CollectionExplorer() {
                 Collection Explorer
               </h1>
               <p className="text-[var(--glass-black-dark)]/80 text-lg">
-                Browse your {cards.length} {cards.length === 1 ? "card" : "cards"} in detail
+                Browse your {totalCount > 0 ? totalCount : cards.length} {totalCount === 1 ? "card" : "cards"} in detail
               </p>
             </div>
             <GlassButton
@@ -80,7 +164,7 @@ export default function CollectionExplorer() {
           </div>
 
           {/* Search Bar */}
-          <div className="relative">
+          <div className="relative mb-6">
             <input
               type="text"
               placeholder="Search by name, set, rarity, or number..."
@@ -99,6 +183,14 @@ export default function CollectionExplorer() {
               </button>
             )}
           </div>
+
+          {/* Filter Bar */}
+          <FilterBar
+            filterOptions={filterOptions}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+            variant="collection"
+          />
         </div>
 
         {error && (
@@ -124,69 +216,95 @@ export default function CollectionExplorer() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {filteredCards.map((card) => (
-              <GlassCard
-                key={card.id}
-                onClick={() => setSelectedCard(card)}
-                className="group cursor-pointer p-0 overflow-hidden hover:scale-105 transition-transform duration-300"
-              >
-                {card.imageUrl ? (
-                  <div className="relative aspect-[2/3] overflow-hidden p-2">
-                    <img
-                      src={card.imageUrl}
-                      alt={card.name}
-                      className="w-full h-full object-cover rounded-lg group-hover:scale-110 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center text-[var(--glass-black-dark)]/50">
-                              <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          `;
-                        }
-                      }}
-                    />
-                    {card.quantity > 1 && (
-                      <div className="absolute top-2 right-2 bg-[var(--glass-primary)] text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg z-10">
-                        ×{card.quantity}
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-visible">
+              {filteredCards.map((card) => (
+                <GlassCard
+                  key={card.id}
+                  onClick={() => setSelectedCard(card)}
+                  className="group cursor-pointer p-0 overflow-visible transition-transform duration-300"
+                >
+                  {card.imageUrl ? (
+                    <div 
+                      className="relative aspect-[2/3] overflow-visible"
+                    >
+                      <div className="w-full h-full overflow-visible rounded-lg">
+                        <img
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-full h-full object-contain rounded-lg group-hover:scale-110 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="w-full h-full flex items-center justify-center text-[var(--glass-black-dark)]/50">
+                                  <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                              `;
+                            }
+                          }}
+                        />
                       </div>
+                      {card.quantity > 1 && (
+                        <div className="absolute top-1 right-1 bg-[var(--glass-primary)] text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg z-10">
+                          ×{card.quantity}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="aspect-[2/3] bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center">
+                      <svg className="w-16 h-16 text-[var(--glass-black-dark)]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="px-1 py-0.5">
+                    <h3 className="font-bold text-[var(--glass-black-dark)] text-sm mb-0 line-clamp-2 group-hover:text-[var(--glass-primary)] transition-colors">
+                      {card.name}
+                    </h3>
+                    <p className="text-xs text-[var(--glass-black-dark)]/70 mb-0">
+                      {card.set} {card.number && `#${card.number}`}
+                    </p>
+                    {card.rarity && (
+                      <span className="inline-block px-1.5 py-0.5 text-xs font-medium glass-button rounded-full mb-0">
+                        {card.rarity}
+                      </span>
                     )}
+                    <div className="mt-0.5 pt-0.5 border-t border-white/30">
+                      <p className="text-xs text-[var(--glass-black-dark)]/70">Value</p>
+                      <p className="text-sm font-bold text-[var(--glass-primary)]">
+                        ${(card.value * card.quantity).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="aspect-[2/3] bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center">
-                    <svg className="w-16 h-16 text-[var(--glass-black-dark)]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                </GlassCard>
+              ))}
+            </div>
+            
+            {/* Infinite Scroll Loading Indicator */}
+            {hasMore && !searchTerm && (
+              <div ref={observerTarget} className="mt-8 flex justify-center">
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--glass-primary)]"></div>
+                    <p className="mt-2 text-sm text-[var(--glass-black-dark)]/70">Loading more cards...</p>
                   </div>
                 )}
-                <div className="p-4">
-                  <h3 className="font-bold text-[var(--glass-black-dark)] text-sm mb-1 line-clamp-2 group-hover:text-[var(--glass-primary)] transition-colors">
-                    {card.name}
-                  </h3>
-                  <p className="text-xs text-[var(--glass-black-dark)]/70 mb-2">
-                    {card.set} {card.number && `#${card.number}`}
-                  </p>
-                  {card.rarity && (
-                    <span className="inline-block px-2 py-1 text-xs font-medium glass-button rounded-full mb-2">
-                      {card.rarity}
-                    </span>
-                  )}
-                  <div className="mt-2 pt-2 border-t border-white/30">
-                    <p className="text-xs text-[var(--glass-black-dark)]/70">Value</p>
-                    <p className="text-sm font-bold text-[var(--glass-primary)]">
-                      ${(card.value * card.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
+              </div>
+            )}
+            
+            {!hasMore && cards.length > 0 && !searchTerm && (
+              <div className="mt-8 text-center">
+                <p className="text-[var(--glass-black-dark)]/70">
+                  You've reached the end! Showing all {totalCount.toLocaleString()} cards.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -197,7 +315,8 @@ export default function CollectionExplorer() {
           onClick={() => setSelectedCard(null)}
         >
           <GlassCard
-            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto relative"
+            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto relative bg-white"
+            style={{ background: '#ffffff', backdropFilter: 'none' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">

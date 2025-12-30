@@ -1,50 +1,128 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { TCGCatalogCard } from "@/lib/db-tcg-catalog";
 import GlassCard from "@/components/GlassCard";
 import GlassButton from "@/components/GlassButton";
 import SyncCatalogButton from "@/components/SyncCatalogButton";
+import AddToCollectionModal from "@/components/AddToCollectionModal";
+import FilterBar, { FilterOptions, ActiveFilters } from "@/components/FilterBar";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 export default function TCGCollection() {
   const [cards, setCards] = useState<TCGCatalogCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCard, setSelectedCard] = useState<TCGCatalogCard | null>(null);
-  const [page, setPage] = useState(1);
+  const [cardToAdd, setCardToAdd] = useState<TCGCatalogCard | null>(null);
+  const [filters, setFilters] = useState<ActiveFilters>({});
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({});
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
   const limit = 50;
 
+  // Load filter options on mount
   useEffect(() => {
-    fetchCards();
-  }, [page, searchTerm]);
+    fetch("/api/tcg-catalog/filters")
+      .then((res) => res.json())
+      .then((data) => {
+        setFilterOptions({
+          sets: data.sets || [],
+          rarities: data.rarities || [],
+          series: data.series || [],
+          types: data.types || [],
+        });
+      })
+      .catch((err) => console.error("Error loading filter options:", err));
+  }, []);
 
-  const fetchCards = async () => {
+  useEffect(() => {
+    // Reset when search term or filters change
+    setCards([]);
+    pageRef.current = 1;
+    setHasMore(true);
+    fetchCards(true);
+  }, [searchTerm, filters]);
+
+  const fetchCards = async (reset = false) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        pageRef.current = 1;
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
-      const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
-      const response = await fetch(`/api/tcg-catalog?page=${page}&limit=${limit}${searchParam}`);
+      const currentPage = pageRef.current;
+      
+      // Build query params
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      if (filters.set) {
+        params.append('set', filters.set);
+      }
+      if (filters.rarity) {
+        params.append('rarity', filters.rarity);
+      }
+      if (filters.series) {
+        params.append('series', filters.series);
+      }
+      if (filters.type) {
+        params.append('type', filters.type);
+      }
+      
+      const response = await fetch(`/api/tcg-catalog?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch cards");
       }
       const data = await response.json();
-      setCards(data.data);
+      
+      if (reset) {
+        setCards(data.data);
+      } else {
+        setCards(prev => [...prev, ...data.data]);
+      }
+      
       setTotalPages(data.pagination.totalPages);
       setTotalCount(data.pagination.total);
+      setHasMore(currentPage < data.pagination.totalPages);
+      
+      if (!reset) {
+        pageRef.current += 1;
+      }
     } catch (err) {
       console.error("Error fetching cards:", err);
       setError("Failed to load cards. Please check your database connection.");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loading) {
+      fetchCards(false);
+    }
+  }, [loadingMore, hasMore, loading, searchTerm]);
+
+  const observerTarget = useInfiniteScroll({
+    hasMore,
+    loading: loadingMore,
+    onLoadMore: loadMore,
+  });
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setPage(1); // Reset to first page when searching
   };
 
   const getCardPrice = (card: TCGCatalogCard): number | null => {
@@ -91,7 +169,7 @@ export default function TCGCollection() {
         <SyncCatalogButton />
 
         {/* Search Bar */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="relative">
             <input
               type="text"
@@ -104,7 +182,7 @@ export default function TCGCollection() {
               <button
                 onClick={() => {
                   setSearchTerm("");
-                  setPage(1);
+                  pageRef.current = 1;
                 }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--glass-black-dark)]/50 hover:text-[var(--glass-black-dark)]"
               >
@@ -115,6 +193,14 @@ export default function TCGCollection() {
             )}
           </div>
         </div>
+
+        {/* Filter Bar */}
+        <FilterBar
+          filterOptions={filterOptions}
+          activeFilters={filters}
+          onFiltersChange={setFilters}
+          variant="tcg"
+        />
 
         {error && (
           <GlassCard className="mb-6 p-4 bg-red-500/20 border-red-500/50">
@@ -140,21 +226,22 @@ export default function TCGCollection() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-visible">
               {cards.map((card) => {
                 const price = getCardPrice(card);
                 return (
                   <GlassCard
                     key={card.id}
-                    onClick={() => setSelectedCard(card)}
-                    className="group cursor-pointer p-0 overflow-hidden hover:scale-105 transition-transform duration-300"
+                    className="group cursor-pointer p-0 overflow-visible transition-transform duration-300 relative"
                   >
                     {card.images_small || card.images_large ? (
-                      <div className="relative aspect-[2/3] overflow-hidden p-2">
-                        <img
-                          src={card.images_large || card.images_small || ''}
-                          alt={card.name}
-                          className="w-full h-full object-cover rounded-lg group-hover:scale-110 transition-transform duration-300"
+                      <div className="relative aspect-[2/3] overflow-visible">
+                        <div className="w-full h-full overflow-visible rounded-lg">
+                          <img
+                            src={card.images_large || card.images_small || ''}
+                            alt={card.name}
+                            className="w-full h-full object-contain rounded-lg group-hover:scale-110 transition-transform duration-300"
+                            onClick={() => setSelectedCard(card)}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = "none";
@@ -169,29 +256,56 @@ export default function TCGCollection() {
                               `;
                             }
                           }}
-                        />
+                          />
+                        </div>
+                        {/* Add Button Overlay */}
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCardToAdd(card);
+                            }}
+                            className="glass-button bg-[var(--glass-primary)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--glass-primary)]/90 shadow-lg"
+                            title="Add to Collection"
+                          >
+                            + Add
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <div className="aspect-[2/3] bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center">
+                      <div className="aspect-[2/3] bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center relative">
                         <svg className="w-16 h-16 text-[var(--glass-black-dark)]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
+                        {/* Add Button Overlay */}
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCardToAdd(card);
+                            }}
+                            className="glass-button bg-[var(--glass-primary)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--glass-primary)]/90 shadow-lg"
+                            title="Add to Collection"
+                          >
+                            + Add
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <div className="p-4">
-                      <h3 className="font-bold text-[var(--glass-black-dark)] text-sm mb-1 line-clamp-2 group-hover:text-[var(--glass-primary)] transition-colors">
+                    <div className="px-1 py-0.5" onClick={() => setSelectedCard(card)}>
+                      <h3 className="font-bold text-[var(--glass-black-dark)] text-sm mb-0 line-clamp-2 group-hover:text-[var(--glass-primary)] transition-colors">
                         {card.name}
                       </h3>
-                      <p className="text-xs text-[var(--glass-black-dark)]/70 mb-2">
+                      <p className="text-xs text-[var(--glass-black-dark)]/70 mb-0">
                         {card.set_name} {card.number && `#${card.number}`}
                       </p>
                       {card.rarity && (
-                        <span className="inline-block px-2 py-1 text-xs font-medium glass-button rounded-full mb-2">
+                        <span className="inline-block px-1.5 py-0.5 text-xs font-medium glass-button rounded-full mb-0">
                           {card.rarity}
                         </span>
                       )}
                       {price !== null && (
-                        <div className="mt-2 pt-2 border-t border-white/30">
+                        <div className="mt-0.5 pt-0.5 border-t border-white/30">
                           <p className="text-xs text-[var(--glass-black-dark)]/70">Market Price</p>
                           <p className="text-sm font-bold text-[var(--glass-primary)]">
                             ${price.toFixed(2)}
@@ -204,30 +318,23 @@ export default function TCGCollection() {
               })}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-8">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page === 1}
-                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 bg-[var(--glass-primary)] text-white hover:bg-[var(--glass-primary-dark)] shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${
-                    page === 1 ? "opacity-50 cursor-not-allowed hover:translate-y-0" : ""
-                  }`}
-                >
-                  ← Previous
-                </button>
-                <span className="text-[var(--glass-black-dark)] font-semibold">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages}
-                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 bg-[var(--glass-primary)] text-white hover:bg-[var(--glass-primary-dark)] shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${
-                    page === totalPages ? "opacity-50 cursor-not-allowed hover:translate-y-0" : ""
-                  }`}
-                >
-                  Next →
-                </button>
+            {/* Infinite Scroll Loading Indicator */}
+            {hasMore && (
+              <div ref={observerTarget} className="mt-8 flex justify-center">
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--glass-primary)]"></div>
+                    <p className="mt-2 text-sm text-[var(--glass-black-dark)]/70">Loading more cards...</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!hasMore && cards.length > 0 && (
+              <div className="mt-8 text-center">
+                <p className="text-[var(--glass-black-dark)]/70">
+                  You've reached the end! Showing all {totalCount.toLocaleString()} cards.
+                </p>
               </div>
             )}
           </>
@@ -241,7 +348,8 @@ export default function TCGCollection() {
           onClick={() => setSelectedCard(null)}
         >
           <GlassCard
-            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto relative"
+            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto relative !bg-white"
+            style={{ background: '#ffffff', backdropFilter: 'none' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
@@ -366,23 +474,45 @@ export default function TCGCollection() {
                     )}
                   </div>
 
-                  {selectedCard.tcgplayer_url && (
-                    <div className="pt-4">
+                  <div className="flex flex-col gap-4 pt-4">
+                    <GlassButton
+                      onClick={() => {
+                        setCardToAdd(selectedCard);
+                        setSelectedCard(null);
+                      }}
+                      variant="primary"
+                      className="w-full"
+                    >
+                      Add to Collection
+                    </GlassButton>
+                    {selectedCard.tcgplayer_url && (
                       <a
                         href={selectedCard.tcgplayer_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="glass-button px-4 py-2 inline-block text-center"
+                        className="glass-button px-6 py-3 rounded-full font-semibold transition-all duration-300 text-center hover:bg-white/40 hover:-translate-y-0.5 w-full"
                       >
                         View on TCGPlayer →
                       </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </GlassCard>
         </div>
+      )}
+
+      {/* Add to Collection Modal */}
+      {cardToAdd && (
+        <AddToCollectionModal
+          card={cardToAdd}
+          onClose={() => setCardToAdd(null)}
+          onSuccess={() => {
+            // Optionally show a success message or refresh data
+            console.log("Card added to collection successfully!");
+          }}
+        />
       )}
     </main>
   );

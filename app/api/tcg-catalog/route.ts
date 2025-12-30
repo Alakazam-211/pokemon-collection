@@ -36,14 +36,44 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
+    const setFilter = searchParams.get('set') || '';
+    const rarityFilter = searchParams.get('rarity') || '';
+    const seriesFilter = searchParams.get('series') || '';
+    const typeFilter = searchParams.get('type') || '';
     const offset = (page - 1) * limit;
 
+    // Build query with filters using sql template tag
     let query;
     let countQuery;
-    let params: any[] = [];
 
-    if (search) {
-      const searchPattern = `%${search}%`;
+    const searchPattern = search ? `%${search}%` : null;
+
+    if (search || setFilter || rarityFilter || seriesFilter || typeFilter) {
+      // Build conditions array for WHERE clause
+      const conditions = [];
+      
+      if (searchPattern) {
+        conditions.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
+      }
+      if (setFilter) {
+        conditions.push(sql`set_name = ${setFilter}`);
+      }
+      if (rarityFilter) {
+        conditions.push(sql`rarity = ${rarityFilter}`);
+      }
+      if (seriesFilter) {
+        conditions.push(sql`set_series = ${seriesFilter}`);
+      }
+      if (typeFilter) {
+        conditions.push(sql`${typeFilter} = ANY(types)`);
+      }
+
+      // Combine conditions
+      const whereCondition = conditions.reduce((acc, condition, index) => {
+        if (index === 0) return condition;
+        return sql`${acc} AND ${condition}`;
+      });
+
       query = sql`
         SELECT 
           id, name, supertype, subtypes, hp, types,
@@ -53,9 +83,7 @@ export async function GET(request: NextRequest) {
           price_normal_market, price_normal_mid, price_normal_low,
           price_holofoil_market, price_holofoil_mid
         FROM tcg_catalog
-        WHERE name ILIKE ${searchPattern}
-           OR set_name ILIKE ${searchPattern}
-           OR rarity ILIKE ${searchPattern}
+        WHERE ${whereCondition}
         ORDER BY name ASC, set_name ASC, number ASC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -64,9 +92,7 @@ export async function GET(request: NextRequest) {
       countQuery = sql`
         SELECT COUNT(*) as total
         FROM tcg_catalog
-        WHERE name ILIKE ${searchPattern}
-           OR set_name ILIKE ${searchPattern}
-           OR rarity ILIKE ${searchPattern}
+        WHERE ${whereCondition}
       `;
     } else {
       query = sql`
@@ -95,7 +121,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const cards = rowsResult.rows.map(mapRowToCard);
-    const totalCount = parseInt(countResult.rows[0].total);
+    const totalCount = parseInt(countResult.rows[0]?.total || '0');
 
     return NextResponse.json({
       data: cards,

@@ -13,14 +13,17 @@ interface CardListProps {
 export default function CardList({ cards, onRemove, onUpdate }: CardListProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredCards = cards.filter(
+  // Ensure cards is always an array
+  const safeCards = Array.isArray(cards) ? cards : [];
+
+  const filteredCards = safeCards.filter(
     (card) =>
       card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       card.set.toLowerCase().includes(searchTerm.toLowerCase()) ||
       card.rarity.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (cards.length === 0) {
+  if (safeCards.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
         <p className="text-lg">No cards in your collection yet.</p>

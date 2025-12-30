@@ -34,7 +34,7 @@ export default function Home() {
         throw new Error(errorMessage);
       }
       const data = await response.json();
-      setCards(data);
+      setCards(data.data || data || []);
     } catch (err) {
       console.error("Error fetching cards:", err);
       setError(err instanceof Error ? err.message : "Failed to load cards. Please check your database connection.");
