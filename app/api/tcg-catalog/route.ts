@@ -49,30 +49,38 @@ export async function GET(request: NextRequest) {
     const searchPattern = search ? `%${search}%` : null;
 
     if (search || setFilter || rarityFilter || seriesFilter || typeFilter) {
-      // Build conditions array for WHERE clause
-      const conditions = [];
+      // Build WHERE clause conditionally
+      let whereClause: any;
+      const parts: any[] = [];
       
       if (searchPattern) {
-        conditions.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
+        parts.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
       }
       if (setFilter) {
-        conditions.push(sql`set_name = ${setFilter}`);
+        parts.push(sql`set_name = ${setFilter}`);
       }
       if (rarityFilter) {
-        conditions.push(sql`rarity = ${rarityFilter}`);
+        parts.push(sql`rarity = ${rarityFilter}`);
       }
       if (seriesFilter) {
-        conditions.push(sql`set_series = ${seriesFilter}`);
+        parts.push(sql`set_series = ${seriesFilter}`);
       }
       if (typeFilter) {
-        conditions.push(sql`${typeFilter} = ANY(types)`);
+        parts.push(sql`${typeFilter} = ANY(types)`);
       }
 
-      // Combine conditions
-      const whereCondition = conditions.reduce((acc, condition, index) => {
-        if (index === 0) return condition;
-        return sql`${acc} AND ${condition}`;
-      });
+      // Build whereClause by combining parts
+      if (parts.length === 1) {
+        whereClause = parts[0];
+      } else if (parts.length === 2) {
+        whereClause = sql`${parts[0]} AND ${parts[1]}`;
+      } else if (parts.length === 3) {
+        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]}`;
+      } else if (parts.length === 4) {
+        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]} AND ${parts[3]}`;
+      } else if (parts.length === 5) {
+        whereClause = sql`${parts[0]} AND ${parts[1]} AND ${parts[2]} AND ${parts[3]} AND ${parts[4]}`;
+      }
 
       query = sql`
         SELECT 
@@ -83,7 +91,7 @@ export async function GET(request: NextRequest) {
           price_normal_market, price_normal_mid, price_normal_low,
           price_holofoil_market, price_holofoil_mid
         FROM tcg_catalog
-        WHERE ${whereCondition}
+        WHERE ${whereClause}
         ORDER BY name ASC, set_name ASC, number ASC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -92,7 +100,7 @@ export async function GET(request: NextRequest) {
       countQuery = sql`
         SELECT COUNT(*) as total
         FROM tcg_catalog
-        WHERE ${whereCondition}
+        WHERE ${whereClause}
       `;
     } else {
       query = sql`

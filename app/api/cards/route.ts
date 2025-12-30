@@ -18,27 +18,29 @@ export async function GET(request: NextRequest) {
     let query;
 
     if (setFilter || rarityFilter || conditionFilter) {
-      const conditions = [];
+      // Build WHERE conditions using a helper function approach
+      let whereClause: any;
       
-      if (setFilter) {
-        conditions.push(sql`set = ${setFilter}`);
+      if (setFilter && rarityFilter && conditionFilter) {
+        whereClause = sql`set = ${setFilter} AND rarity = ${rarityFilter} AND condition = ${conditionFilter}`;
+      } else if (setFilter && rarityFilter) {
+        whereClause = sql`set = ${setFilter} AND rarity = ${rarityFilter}`;
+      } else if (setFilter && conditionFilter) {
+        whereClause = sql`set = ${setFilter} AND condition = ${conditionFilter}`;
+      } else if (rarityFilter && conditionFilter) {
+        whereClause = sql`rarity = ${rarityFilter} AND condition = ${conditionFilter}`;
+      } else if (setFilter) {
+        whereClause = sql`set = ${setFilter}`;
+      } else if (rarityFilter) {
+        whereClause = sql`rarity = ${rarityFilter}`;
+      } else if (conditionFilter) {
+        whereClause = sql`condition = ${conditionFilter}`;
       }
-      if (rarityFilter) {
-        conditions.push(sql`rarity = ${rarityFilter}`);
-      }
-      if (conditionFilter) {
-        conditions.push(sql`condition = ${conditionFilter}`);
-      }
-
-      const whereCondition = conditions.reduce((acc, condition, index) => {
-        if (index === 0) return condition;
-        return sql`${acc} AND ${condition}`;
-      });
 
       countQuery = sql`
         SELECT COUNT(*) as total
         FROM pokemon_cards
-        WHERE ${whereCondition}
+        WHERE ${whereClause}
       `;
 
       query = sql`
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
           created_at as "createdAt",
           updated_at as "updatedAt"
         FROM pokemon_cards
-        WHERE ${whereCondition}
+        WHERE ${whereClause}
         ORDER BY created_at DESC
         LIMIT ${limit}
         OFFSET ${offset}
