@@ -33,7 +33,7 @@ export default function RootLayout({
           links={[
             { href: '/', label: 'Home' },
             { href: '/collection', label: 'Collection' },
-            { href: '/tcg-collection', label: 'TCG Sync' },
+            { href: '/tcg-collection', label: 'TCG Gallery' },
           ]}
           primaryColor="rgba(59, 76, 202, 0.95)"
         />

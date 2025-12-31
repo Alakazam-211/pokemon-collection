@@ -76,7 +76,8 @@ export default function AddToCollectionModal({
       onClick={onClose}
     >
       <GlassCard
-        className="max-w-md w-full relative mx-4"
+        className="max-w-md w-full relative mx-4 !bg-white"
+        style={{ background: '#ffffff', backdropFilter: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 sm:p-6">

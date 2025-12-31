@@ -200,7 +200,7 @@ export default function TCGCollection() {
           <div className="mb-4 sm:mb-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--glass-black-dark)] mb-2">
-                TCG Collection
+                TCG Gallery
               </h1>
               <p className="text-[var(--glass-black-dark)]/80 text-base sm:text-lg">
                 Browse {totalCount.toLocaleString()} cards from the Pokemon TCG database
@@ -309,7 +309,10 @@ export default function TCGCollection() {
                               e.stopPropagation();
                               setCardToAdd(card);
                             }}
-                            className="glass-button bg-[var(--glass-primary)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--glass-primary)]/90 shadow-lg"
+                            className="text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg"
+                            style={{ backgroundColor: '#3B4CCA' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2E3A9E'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3B4CCA'}
                             title="Add to Collection"
                           >
                             + Add
@@ -328,7 +331,10 @@ export default function TCGCollection() {
                               e.stopPropagation();
                               setCardToAdd(card);
                             }}
-                            className="glass-button bg-[var(--glass-primary)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[var(--glass-primary)]/90 shadow-lg"
+                            className="text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg"
+                            style={{ backgroundColor: '#3B4CCA' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2E3A9E'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3B4CCA'}
                             title="Add to Collection"
                           >
                             + Add
