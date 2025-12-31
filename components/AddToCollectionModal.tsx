@@ -138,7 +138,18 @@ export default function AddToCollectionModal({
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="glass-button rounded-lg px-3 sm:px-4 py-2 text-lg font-bold hover:bg-white/40 active:bg-white/40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  className="rounded-full p-2 text-lg font-bold text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: quantity <= 1 ? '#9CA3AF' : '#3B4CCA' }}
+                  onMouseEnter={(e) => {
+                    if (quantity > 1) {
+                      e.currentTarget.style.backgroundColor = '#2E3A9E';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (quantity > 1) {
+                      e.currentTarget.style.backgroundColor = '#3B4CCA';
+                    }
+                  }}
                   disabled={quantity <= 1}
                 >
                   −
@@ -156,7 +167,10 @@ export default function AddToCollectionModal({
                 <button
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
-                  className="glass-button rounded-lg px-3 sm:px-4 py-2 text-lg font-bold hover:bg-white/40 active:bg-white/40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  className="rounded-full p-2 text-lg font-bold text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  style={{ backgroundColor: '#3B4CCA' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2E3A9E'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3B4CCA'}
                 >
                   +
                 </button>
