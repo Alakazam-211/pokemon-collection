@@ -21,9 +21,30 @@ export default function AddToCollectionModal({
   const [condition, setCondition] = useState<PokemonCard["condition"]>("Near Mint");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
+  // Get default price from catalog, or allow manual entry
+  const getDefaultPrice = (): number => {
+    // Properly handle null values - only use non-null prices
+    if (card.price_normal_market !== null && card.price_normal_market !== undefined) {
+      return card.price_normal_market;
+    }
+    if (card.price_normal_mid !== null && card.price_normal_mid !== undefined) {
+      return card.price_normal_mid;
+    }
+    if (card.price_normal_low !== null && card.price_normal_low !== undefined) {
+      return card.price_normal_low;
+    }
+    return 0;
+  };
+  
+  const [manualPrice, setManualPrice] = useState<string>(getDefaultPrice() > 0 ? getDefaultPrice().toFixed(2) : '');
+  
   const getCardPrice = (): number => {
-    return card.price_normal_market || card.price_normal_mid || card.price_normal_low || 0;
+    // Use manual price if entered, otherwise use catalog price
+    if (manualPrice && parseFloat(manualPrice) > 0) {
+      return parseFloat(manualPrice);
+    }
+    return getDefaultPrice();
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -198,17 +219,36 @@ export default function AddToCollectionModal({
               </select>
             </div>
 
+            {/* Price Input */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-2">
+                Price per Card ($)
+                {getDefaultPrice() > 0 && (
+                  <span className="text-xs text-[var(--glass-black-dark)]/60 ml-2">
+                    (Catalog: ${getDefaultPrice().toFixed(2)})
+                  </span>
+                )}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={manualPrice}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // Allow empty string, or valid number
+                  if (val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0)) {
+                    setManualPrice(val);
+                  }
+                }}
+                placeholder={getDefaultPrice() > 0 ? getDefaultPrice().toFixed(2) : "0.00"}
+                className="glass-input-enhanced w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base min-h-[44px]"
+              />
+            </div>
+
             {/* Price Display */}
             {getCardPrice() > 0 && (
               <div className="pt-4 border-t border-white/30">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--glass-black-dark)]/70">
-                    Price per card:
-                  </span>
-                  <span className="text-lg font-bold text-[var(--glass-primary)]">
-                    ${getCardPrice().toFixed(2)}
-                  </span>
-                </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-sm font-semibold text-[var(--glass-black-dark)]">
                     Total Value:
