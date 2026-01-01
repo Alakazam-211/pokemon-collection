@@ -49,7 +49,20 @@ export default function CollectionExplorer() {
     isPsa: boolean;
     psaRating: string;
   } | null>(null);
-  const [sortOrder, setSortOrder] = useState<string>("recently-added");
+  // Load sort order from localStorage, default to "recently-added"
+  const [sortOrder, setSortOrder] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("collectionSortOrder") || "recently-added";
+    }
+    return "recently-added";
+  });
+
+  // Save sort order to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("collectionSortOrder", sortOrder);
+    }
+  }, [sortOrder]);
 
   // Load filter options on mount
   useEffect(() => {
@@ -471,29 +484,9 @@ export default function CollectionExplorer() {
             activeFilters={filters}
             onFiltersChange={setFilters}
             variant="collection"
+            sortOrder={sortOrder}
+            onSortChange={setSortOrder}
           />
-
-          {/* Sort Options */}
-          <div className="mt-4 sm:mt-6">
-            <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-2">
-              Sort by:
-            </label>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="glass-input-enhanced px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl min-h-[44px] w-full sm:w-auto"
-            >
-              <option value="recently-added">🕐 Recently Added</option>
-              <option value="alphabetical">🔤 Alphabetical (A-Z)</option>
-              <option value="card-number">🔢 Card Number</option>
-              <option value="set-name">📦 Set Name</option>
-              <option value="rarity">✨ Rarity</option>
-              <option value="value-high-low">💰 Value (High to Low)</option>
-              <option value="value-low-high">💰 Value (Low to High)</option>
-              <option value="total-value-high-low">💎 Total Value (High to Low)</option>
-              <option value="total-value-low-high">💎 Total Value (Low to High)</option>
-            </select>
-          </div>
         </div>
 
         {error && (
