@@ -7,6 +7,23 @@ import GlassButton from "@/components/GlassButton";
 import FilterBar, { FilterOptions, ActiveFilters } from "@/components/FilterBar";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
+interface CatalogPriceInfo {
+  catalogCard: {
+    id: string;
+    name: string;
+    set: string;
+    number: string | null;
+  };
+  prices: {
+    market: number | null;
+    mid: number | null;
+    low: number | null;
+    holofoilMarket: number | null;
+    holofoilMid: number | null;
+  };
+  currentValue: number;
+}
+
 export default function CollectionExplorer() {
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +37,10 @@ export default function CollectionExplorer() {
   const [hasMore, setHasMore] = useState(true);
   const pageRef = useRef(1);
   const limit = 50;
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [catalogPriceInfo, setCatalogPriceInfo] = useState<CatalogPriceInfo | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Load filter options on mount
   useEffect(() => {
@@ -131,6 +152,91 @@ export default function CollectionExplorer() {
         (card.number && card.number.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [cards, searchTerm]);
+
+  const updateCard = async (id: string, updates: Partial<PokemonCard>) => {
+    try {
+      setError(null);
+      const response = await fetch(`/api/cards/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update card");
+      }
+
+      const updatedCard = await response.json();
+      setCards(cards.map((card) => (card.id === id ? updatedCard : card)));
+      
+      // Update selected card if it's the one being updated
+      if (selectedCard && selectedCard.id === id) {
+        setSelectedCard(updatedCard);
+      }
+    } catch (err) {
+      console.error("Error updating card:", err);
+      setError("Failed to update card");
+    }
+  };
+
+  const handleSyncFromCatalog = async () => {
+    if (!selectedCard) return;
+    
+    setIsSyncing(true);
+    setSyncError(null);
+    
+    try {
+      const response = await fetch(`/api/cards/${selectedCard.id}/catalog-price`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404) {
+          setSyncError(errorData.error || 'Card not found in catalog');
+        } else {
+          setSyncError(errorData.error || 'Failed to fetch catalog price');
+        }
+        setIsSyncing(false);
+        return;
+      }
+      
+      const priceInfo: CatalogPriceInfo = await response.json();
+      
+      // Check if catalog has market price (required per user preference)
+      if (priceInfo.prices.market === null || priceInfo.prices.market === undefined) {
+        setSyncError('No market price available in catalog for this card');
+        setIsSyncing(false);
+        return;
+      }
+      
+      setCatalogPriceInfo(priceInfo);
+      setShowSyncDialog(true);
+      setIsSyncing(false);
+    } catch (error) {
+      console.error('Error syncing from catalog:', error);
+      setSyncError('Failed to fetch catalog price. Please try again.');
+      setIsSyncing(false);
+    }
+  };
+
+  const handleConfirmSync = () => {
+    if (!catalogPriceInfo || !selectedCard) return;
+    
+    const marketPrice = catalogPriceInfo.prices.market;
+    if (marketPrice !== null && marketPrice !== undefined) {
+      updateCard(selectedCard.id, { value: marketPrice });
+      setShowSyncDialog(false);
+      setCatalogPriceInfo(null);
+      setSyncError(null);
+    }
+  };
+
+  const handleCancelSync = () => {
+    setShowSyncDialog(false);
+    setCatalogPriceInfo(null);
+    setSyncError(null);
+  };
 
   if (loading) {
     return (
@@ -401,6 +507,70 @@ export default function CollectionExplorer() {
                         ${(selectedCard.value * selectedCard.quantity).toFixed(2)}
                       </p>
                     </div>
+                  </div>
+
+                  {/* Sync from Catalog Button */}
+                  <div className="pt-4 border-t border-white/30">
+                    <GlassButton
+                      onClick={handleSyncFromCatalog}
+                      variant="glass"
+                      disabled={isSyncing}
+                      className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSyncing ? "Syncing..." : "🔄 Sync Price from Catalog"}
+                    </GlassButton>
+                    
+                    {/* Sync Error Message */}
+                    {syncError && !showSyncDialog && (
+                      <div className="mt-3 p-2 bg-red-500/20 border border-red-500/50 rounded-lg">
+                        <p className="text-xs text-red-800">{syncError}</p>
+                        <button
+                          onClick={() => setSyncError(null)}
+                          className="mt-1 text-xs text-red-600 hover:text-red-800 underline"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Sync Confirmation Dialog */}
+                    {showSyncDialog && catalogPriceInfo && (
+                      <div className="mt-3 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                        <h4 className="text-sm font-semibold text-[var(--glass-black-dark)] mb-2">
+                          Sync Price from Catalog
+                        </h4>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-[var(--glass-black-dark)]/70">Current Value:</span>
+                            <span className="font-medium text-[var(--glass-black-dark)]">
+                              ${catalogPriceInfo.currentValue.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[var(--glass-black-dark)]/70">Catalog Market Price:</span>
+                            <span className="font-bold text-[var(--glass-primary)]">
+                              ${catalogPriceInfo.prices.market!.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-white/30 flex gap-2">
+                            <GlassButton
+                              onClick={handleConfirmSync}
+                              variant="primary"
+                              className="px-3 py-1 text-xs flex-1"
+                            >
+                              Update to ${catalogPriceInfo.prices.market!.toFixed(2)}
+                            </GlassButton>
+                            <GlassButton
+                              onClick={handleCancelSync}
+                              variant="glass"
+                              className="px-3 py-1 text-xs flex-1"
+                            >
+                              Cancel
+                            </GlassButton>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
