@@ -41,6 +41,14 @@ export default function CollectionExplorer() {
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [catalogPriceInfo, setCatalogPriceInfo] = useState<CatalogPriceInfo | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<{
+    value: string;
+    quantity: string;
+    condition: PokemonCard["condition"];
+    isPsa: boolean;
+    psaRating: string;
+  } | null>(null);
 
   // Load filter options on mount
   useEffect(() => {
@@ -68,6 +76,12 @@ export default function CollectionExplorer() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filters]);
+
+  // Reset editing state when selected card changes
+  useEffect(() => {
+    setIsEditing(false);
+    setEditData(null);
+  }, [selectedCard]);
 
   const fetchCards = async (reset = false) => {
     try {
@@ -174,6 +188,8 @@ export default function CollectionExplorer() {
       // Update selected card if it's the one being updated
       if (selectedCard && selectedCard.id === id) {
         setSelectedCard(updatedCard);
+        setIsEditing(false);
+        setEditData(null);
       }
     } catch (err) {
       console.error("Error updating card:", err);
@@ -285,6 +301,37 @@ export default function CollectionExplorer() {
     setShowSyncDialog(false);
     setCatalogPriceInfo(null);
     setSyncError(null);
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedCard) return;
+    setEditData({
+      value: selectedCard.value.toString(),
+      quantity: selectedCard.quantity.toString(),
+      condition: selectedCard.condition,
+      isPsa: selectedCard.isPsa || false,
+      psaRating: selectedCard.psaRating?.toString() || "",
+    });
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditData(null);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedCard || !editData) return;
+    
+    updateCard(selectedCard.id, {
+      value: parseFloat(editData.value) || 0,
+      quantity: parseInt(editData.quantity) || 1,
+      condition: editData.condition,
+      isPsa: editData.isPsa,
+      psaRating: editData.isPsa && editData.psaRating ? parseInt(editData.psaRating) : undefined,
+    });
+    setIsEditing(false);
+    setEditData(null);
   };
 
   if (loading) {
@@ -531,43 +578,185 @@ export default function CollectionExplorer() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/30">
-                    <div>
-                      <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Condition</p>
-                      <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
-                        {selectedCard.condition}
-                      </p>
+                  {isEditing && editData ? (
+                    <div className="space-y-3 sm:space-y-4 pt-4 border-t border-white/30">
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                          <label className="block text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">
+                            Value ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editData.value}
+                            onChange={(e) =>
+                              setEditData({ ...editData, value: e.target.value })
+                            }
+                            className="glass-input-enhanced w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editData.quantity}
+                            onChange={(e) =>
+                              setEditData({ ...editData, quantity: e.target.value })
+                            }
+                            className="glass-input-enhanced w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">
+                          Condition
+                        </label>
+                        <select
+                          value={editData.condition}
+                          onChange={(e) =>
+                            setEditData({
+                              ...editData,
+                              condition: e.target.value as PokemonCard["condition"],
+                            })
+                          }
+                          className="glass-input-enhanced w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg"
+                        >
+                          <option value="Mint">Mint</option>
+                          <option value="Near Mint">Near Mint</option>
+                          <option value="Excellent">Excellent</option>
+                          <option value="Good">Good</option>
+                          <option value="Fair">Fair</option>
+                          <option value="Poor">Poor</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`psa-${selectedCard.id}`}
+                            checked={editData.isPsa}
+                            onChange={(e) =>
+                              setEditData({
+                                ...editData,
+                                isPsa: e.target.checked,
+                                psaRating: e.target.checked ? editData.psaRating : "",
+                              })
+                            }
+                            className="w-4 h-4 rounded border-gray-300 text-[var(--glass-primary)] focus:ring-[var(--glass-primary)]"
+                          />
+                          <label
+                            htmlFor={`psa-${selectedCard.id}`}
+                            className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 cursor-pointer"
+                          >
+                            PSA Graded
+                          </label>
+                        </div>
+                        {editData.isPsa && (
+                          <div>
+                            <label className="block text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">
+                              PSA Rating (1-10)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={editData.psaRating}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (
+                                  value === "" ||
+                                  (parseInt(value) >= 1 && parseInt(value) <= 10)
+                                ) {
+                                  setEditData({ ...editData, psaRating: value });
+                                }
+                              }}
+                              className="glass-input-enhanced w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg"
+                              placeholder="1-10"
+                              required={editData.isPsa}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <GlassButton
+                          onClick={handleSaveEdit}
+                          variant="primary"
+                          className="px-4 py-2 text-sm sm:text-base flex-1"
+                        >
+                          Save
+                        </GlassButton>
+                        <GlassButton
+                          onClick={handleCancelEdit}
+                          variant="glass"
+                          className="px-4 py-2 text-sm sm:text-base flex-1"
+                        >
+                          Cancel
+                        </GlassButton>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Quantity</p>
-                      <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
-                        {selectedCard.quantity}
-                      </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/30">
+                      <div>
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Condition</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
+                          {selectedCard.condition}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Quantity</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
+                          {selectedCard.quantity}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Value per Card</p>
+                        <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
+                          ${selectedCard.value.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Total Value</p>
+                        <p className="text-lg sm:text-xl font-bold text-[var(--glass-primary)]">
+                          ${(selectedCard.value * selectedCard.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                      {selectedCard.isPsa && selectedCard.psaRating && (
+                        <>
+                          <div>
+                            <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">PSA Rating</p>
+                            <p className="text-base sm:text-lg font-bold text-yellow-700">
+                              {selectedCard.psaRating}
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Value per Card</p>
-                      <p className="text-base sm:text-lg font-semibold text-[var(--glass-black-dark)]">
-                        ${selectedCard.value.toFixed(2)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-[var(--glass-black-dark)]/70 mb-1">Total Value</p>
-                      <p className="text-lg sm:text-xl font-bold text-[var(--glass-primary)]">
-                        ${(selectedCard.value * selectedCard.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Sync from Catalog Button */}
-                  <div className="pt-4 border-t border-white/30">
-                    <GlassButton
-                      onClick={handleSyncFromCatalog}
-                      variant="glass"
-                      disabled={isSyncing}
-                      className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSyncing ? "Syncing..." : "🔄 Sync Price from Catalog"}
-                    </GlassButton>
+                  {/* Edit and Sync Buttons */}
+                  <div className="pt-4 border-t border-white/30 space-y-2">
+                    {!isEditing && (
+                      <GlassButton
+                        onClick={handleStartEdit}
+                        variant="primary"
+                        className="w-full"
+                      >
+                        ✏️ Edit Card
+                      </GlassButton>
+                    )}
+                    {!isEditing && (
+                      <GlassButton
+                        onClick={handleSyncFromCatalog}
+                        variant="glass"
+                        disabled={isSyncing}
+                        className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSyncing ? "Syncing..." : "🔄 Sync Price from Catalog"}
+                      </GlassButton>
+                    )}
                     
                     {/* Sync Error Message */}
                     {syncError && !showSyncDialog && (
