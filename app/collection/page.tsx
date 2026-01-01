@@ -49,6 +49,7 @@ export default function CollectionExplorer() {
     isPsa: boolean;
     psaRating: string;
   } | null>(null);
+  const [sortOrder, setSortOrder] = useState<string>("recently-added");
 
   // Load filter options on mount
   useEffect(() => {
@@ -121,10 +122,16 @@ export default function CollectionExplorer() {
       }
       const data = await response.json();
       
+      // Include createdAt for sorting
+      const cardsWithTimestamp = data.data.map((card: any) => ({
+        ...card,
+        createdAt: card.createdAt || card.created_at,
+      }));
+      
       if (reset) {
-        setCards(data.data);
+        setCards(cardsWithTimestamp);
       } else {
-        setCards(prev => [...prev, ...data.data]);
+        setCards(prev => [...prev, ...cardsWithTimestamp]);
       }
       
       setTotalCount(data.pagination.total);
@@ -155,17 +162,85 @@ export default function CollectionExplorer() {
   });
 
   const filteredCards = useMemo(() => {
-    if (!searchTerm) {
-      return cards;
+    let result = cards;
+    
+    // Apply search filter
+    if (searchTerm) {
+      result = result.filter(
+        (card) =>
+          card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          card.set.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          card.rarity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (card.number && card.number.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
     }
-    return cards.filter(
-      (card) =>
-        card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.set.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.rarity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (card.number && card.number.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [cards, searchTerm]);
+    
+    // Apply sorting
+    const sorted = [...result].sort((a, b) => {
+      switch (sortOrder) {
+        case "recently-added":
+          // Sort by createdAt if available, otherwise maintain API order
+          const aCreated = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : Date.now();
+          const bCreated = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : Date.now();
+          return bCreated - aCreated; // Most recent first
+        
+        case "alphabetical":
+          const nameA = a.name.toLowerCase();
+          const nameB = b.name.toLowerCase();
+          if (nameA !== nameB) return nameA.localeCompare(nameB);
+          // If names are equal, sort by set
+          return a.set.localeCompare(b.set);
+        
+        case "card-number":
+          // Sort by set first, then by card number
+          const setCompare = a.set.localeCompare(b.set);
+          if (setCompare !== 0) return setCompare;
+          // Parse card numbers (handle formats like "25/102" or "25")
+          const parseNumber = (num: string) => {
+            if (!num) return Infinity;
+            const match = num.match(/^(\d+)/);
+            return match ? parseInt(match[1], 10) : Infinity;
+          };
+          return parseNumber(a.number || "") - parseNumber(b.number || "");
+        
+        case "value-high-low":
+          return (b.value * b.quantity) - (a.value * a.quantity);
+        
+        case "value-low-high":
+          return (a.value * a.quantity) - (b.value * b.quantity);
+        
+        case "set-name":
+          const setA = a.set.toLowerCase();
+          const setB = b.set.toLowerCase();
+          if (setA !== setB) return setA.localeCompare(setB);
+          // If sets are equal, sort by card number
+          const parseNumberA = (num: string) => {
+            if (!num) return Infinity;
+            const match = num.match(/^(\d+)/);
+            return match ? parseInt(match[1], 10) : Infinity;
+          };
+          return parseNumberA(a.number || "") - parseNumberA(b.number || "");
+        
+        case "rarity":
+          const rarityA = a.rarity || "";
+          const rarityB = b.rarity || "";
+          if (rarityA !== rarityB) return rarityA.localeCompare(rarityB);
+          // If rarity is equal, sort by name
+          return a.name.localeCompare(b.name);
+        
+        case "total-value-high-low":
+          return (b.value * b.quantity) - (a.value * a.quantity);
+        
+        case "total-value-low-high":
+          return (a.value * a.quantity) - (b.value * b.quantity);
+        
+        default:
+          return 0;
+      }
+    });
+    
+    return sorted;
+  }, [cards, searchTerm, sortOrder]);
 
   const updateCard = async (id: string, updates: Partial<PokemonCard>) => {
     try {
@@ -182,7 +257,13 @@ export default function CollectionExplorer() {
         throw new Error("Failed to update card");
       }
 
-      const updatedCard = await response.json();
+      const updatedCardData = await response.json();
+      // Preserve createdAt when updating
+      const updatedCard = {
+        ...updatedCardData,
+        createdAt: updatedCardData.createdAt || updatedCardData.created_at || (cards.find(c => c.id === id) as any)?.createdAt,
+      };
+      
       setCards(cards.map((card) => (card.id === id ? updatedCard : card)));
       
       // Update selected card if it's the one being updated
@@ -391,6 +472,28 @@ export default function CollectionExplorer() {
             onFiltersChange={setFilters}
             variant="collection"
           />
+
+          {/* Sort Options */}
+          <div className="mt-4 sm:mt-6">
+            <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-2">
+              Sort by:
+            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="glass-input-enhanced px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl min-h-[44px] w-full sm:w-auto"
+            >
+              <option value="recently-added">🕐 Recently Added</option>
+              <option value="alphabetical">🔤 Alphabetical (A-Z)</option>
+              <option value="card-number">🔢 Card Number</option>
+              <option value="set-name">📦 Set Name</option>
+              <option value="rarity">✨ Rarity</option>
+              <option value="value-high-low">💰 Value (High to Low)</option>
+              <option value="value-low-high">💰 Value (Low to High)</option>
+              <option value="total-value-high-low">💎 Total Value (High to Low)</option>
+              <option value="total-value-low-high">💎 Total Value (Low to High)</option>
+            </select>
+          </div>
         </div>
 
         {error && (
