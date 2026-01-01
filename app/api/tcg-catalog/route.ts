@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
         `;
       } else {
-        // Multiple filters - build conditions using sql template tag with sql.raw()
+        // Multiple filters - build conditions using sql template tag
         // Collect conditions as sql fragments
         const sqlConditions: any[] = [];
         
@@ -125,9 +125,29 @@ export async function GET(request: NextRequest) {
           sqlConditions.push(sql`set_series = ${seriesFilter}`);
         }
         if (typeFilter && typeFilter.trim()) {
-          sqlConditions.push(sql`types IS NOT NULL AND ${typeFilter} IN (SELECT unnest(types))`);
+          sqlConditions.push(sql`types IS NOT NULL AND ${typeFilter} = ANY(types)`);
         }
         
+        // Safety check: if no conditions, fall back to no-filter query
+        if (sqlConditions.length === 0) {
+          query = sql`
+            SELECT 
+              id, name, supertype, subtypes, hp, types,
+              set_id, set_name, set_series, number, artist, rarity, flavor_text,
+              national_pokedex_numbers, images_small, images_large,
+              tcgplayer_url, cardmarket_url,
+              price_normal_market, price_normal_mid, price_normal_low,
+              price_holofoil_market, price_holofoil_mid
+            FROM tcg_catalog
+            ORDER BY name ASC, set_name ASC, number ASC
+            LIMIT ${limit}
+            OFFSET ${offset}
+          `;
+          countQuery = sql`
+            SELECT COUNT(*) as total
+            FROM tcg_catalog
+          `;
+        } else {
         // Combine conditions with AND
         const whereCondition = sqlConditions.reduce((acc, condition, idx) => 
           idx === 0 ? condition : sql`${acc} AND ${condition}`
@@ -153,6 +173,7 @@ export async function GET(request: NextRequest) {
           FROM tcg_catalog
           WHERE ${whereCondition}
         `;
+        }
       }
     } else {
       query = sql`

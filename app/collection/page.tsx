@@ -80,14 +80,10 @@ export default function CollectionExplorer() {
   }, []);
 
   useEffect(() => {
-    // Initial load or reload when search or filters change
-    const shouldReload = !searchTerm;
-    if (shouldReload) {
-      setCards([]);
-      pageRef.current = 1;
-      setHasMore(true);
-      fetchCards(true);
-    }
+    // Reload when search or filters change - update list without page refresh
+    pageRef.current = 1;
+    setHasMore(true);
+    fetchCards(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filters]);
 
@@ -142,8 +138,10 @@ export default function CollectionExplorer() {
       }));
       
       if (reset) {
+        // Replace cards when resetting (filters/search changed)
         setCards(cardsWithTimestamp);
       } else {
+        // Append cards when loading more
         setCards(prev => [...prev, ...cardsWithTimestamp]);
       }
       
