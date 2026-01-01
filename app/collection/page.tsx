@@ -181,6 +181,31 @@ export default function CollectionExplorer() {
     }
   };
 
+  const removeCard = async (id: string) => {
+    try {
+      setError(null);
+      const response = await fetch(`/api/cards/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete card");
+      }
+
+      // Remove card from list
+      setCards((prevCards) => prevCards.filter((card) => card.id !== id));
+      
+      // Close modal if the deleted card was selected
+      if (selectedCard && selectedCard.id === id) {
+        setSelectedCard(null);
+      }
+    } catch (err) {
+      console.error("Error deleting card:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete card");
+    }
+  };
+
   const handleSyncFromCatalog = async () => {
     if (!selectedCard) return;
     
@@ -595,6 +620,23 @@ export default function CollectionExplorer() {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Delete Button */}
+                  <div className="pt-4 border-t border-white/30">
+                    <GlassButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const confirmed = window.confirm(`Remove ${selectedCard.name} from collection?`);
+                        if (confirmed) {
+                          removeCard(selectedCard.id);
+                        }
+                      }}
+                      variant="outline"
+                      className="w-full border-red-500 text-red-600 hover:bg-red-500/10"
+                    >
+                      🗑️ Remove from Collection
+                    </GlassButton>
                   </div>
                 </div>
               </div>
