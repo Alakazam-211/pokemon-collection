@@ -118,6 +118,70 @@ export async function getCatalogCardById(id: string): Promise<TCGCatalogCard | n
 }
 
 /**
+ * Find a matching catalog card for a collection card
+ * Matches by name and set_name (required), optionally by number
+ * Returns the best match with pricing information
+ */
+export async function findMatchingCatalogCard(
+  name: string,
+  set: string,
+  number?: string | null
+): Promise<TCGCatalogCard | null> {
+  try {
+    let query;
+    
+    // If number is provided, try exact match first (name + set + number)
+    if (number && number.trim()) {
+      const { rows: exactRows } = await sql`
+        SELECT 
+          id, name, supertype, subtypes, hp, types,
+          set_id, set_name, set_series, number, artist, rarity, flavor_text,
+          national_pokedex_numbers, images_small, images_large,
+          tcgplayer_url, cardmarket_url,
+          price_normal_market, price_normal_mid, price_normal_low,
+          price_holofoil_market, price_holofoil_mid
+        FROM tcg_catalog
+        WHERE LOWER(name) = LOWER(${name})
+          AND LOWER(set_name) = LOWER(${set})
+          AND number = ${number}
+        LIMIT 1
+      `;
+      
+      if (exactRows.length > 0) {
+        return mapRowToCard(exactRows[0]);
+      }
+    }
+    
+    // Fallback to name + set match (without number)
+    const { rows } = await sql`
+      SELECT 
+        id, name, supertype, subtypes, hp, types,
+        set_id, set_name, set_series, number, artist, rarity, flavor_text,
+        national_pokedex_numbers, images_small, images_large,
+        tcgplayer_url, cardmarket_url,
+        price_normal_market, price_normal_mid, price_normal_low,
+        price_holofoil_market, price_holofoil_mid
+      FROM tcg_catalog
+      WHERE LOWER(name) = LOWER(${name})
+        AND LOWER(set_name) = LOWER(${set})
+      ORDER BY 
+        CASE WHEN number IS NOT NULL THEN 1 ELSE 2 END,
+        number ASC
+      LIMIT 1
+    `;
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    return mapRowToCard(rows[0]);
+  } catch (error) {
+    console.error('Error finding matching catalog card:', error);
+    throw error;
+  }
+}
+
+/**
  * Convert database row to TCGCatalogCard
  */
 function mapRowToCard(row: any): TCGCatalogCard {
