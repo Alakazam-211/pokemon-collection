@@ -180,6 +180,66 @@ export default function TCGCollection() {
     return card.price_normal_market || card.price_normal_mid || card.price_normal_low || null;
   };
 
+  // Sort cards client-side
+  const sortedCards = useMemo(() => {
+    const sorted = [...cards].sort((a, b) => {
+      switch (sortOrder) {
+        case "alphabetical":
+          const nameA = a.name.toLowerCase();
+          const nameB = b.name.toLowerCase();
+          if (nameA !== nameB) return nameA.localeCompare(nameB);
+          // If names are equal, sort by set
+          return a.set_name.localeCompare(b.set_name);
+        
+        case "card-number":
+          // Sort by set first, then by card number
+          const setCompare = a.set_name.localeCompare(b.set_name);
+          if (setCompare !== 0) return setCompare;
+          // Parse card numbers (handle formats like "25/102" or "25")
+          const parseNumber = (num: string | null) => {
+            if (!num) return Infinity;
+            const match = num.match(/^(\d+)/);
+            return match ? parseInt(match[1], 10) : Infinity;
+          };
+          return parseNumber(a.number) - parseNumber(b.number);
+        
+        case "set-name":
+          const setA = a.set_name.toLowerCase();
+          const setB = b.set_name.toLowerCase();
+          if (setA !== setB) return setA.localeCompare(setB);
+          // If sets are equal, sort by card number
+          const parseNumberA = (num: string | null) => {
+            if (!num) return Infinity;
+            const match = num.match(/^(\d+)/);
+            return match ? parseInt(match[1], 10) : Infinity;
+          };
+          return parseNumberA(a.number) - parseNumberA(b.number);
+        
+        case "rarity":
+          const rarityA = a.rarity || "";
+          const rarityB = b.rarity || "";
+          if (rarityA !== rarityB) return rarityA.localeCompare(rarityB);
+          // If rarity is equal, sort by name
+          return a.name.localeCompare(b.name);
+        
+        case "price-high-low":
+          const priceA = a.price_normal_market || a.price_normal_mid || a.price_normal_low || 0;
+          const priceB = b.price_normal_market || b.price_normal_mid || b.price_normal_low || 0;
+          return priceB - priceA;
+        
+        case "price-low-high":
+          const priceALow = a.price_normal_market || a.price_normal_mid || a.price_normal_low || 0;
+          const priceBLow = b.price_normal_market || b.price_normal_mid || b.price_normal_low || 0;
+          return priceALow - priceBLow;
+        
+        default:
+          return 0;
+      }
+    });
+    
+    return sorted;
+  }, [cards, sortOrder]);
+
   if (loading && cards.length === 0) {
     return (
       <main className="min-h-screen">
