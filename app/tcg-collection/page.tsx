@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { TCGCatalogCard } from "@/lib/db-tcg-catalog";
 import GlassCard from "@/components/GlassCard";
 import GlassButton from "@/components/GlassButton";
@@ -28,6 +28,7 @@ export default function TCGCollection() {
   const searchTermRef = useRef(searchTerm);
   const filtersRef = useRef(filters);
   const limit = 50;
+  const [sortOrder, setSortOrder] = useState<string>("alphabetical");
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -244,6 +245,8 @@ export default function TCGCollection() {
           activeFilters={filters}
           onFiltersChange={setFilters}
           variant="tcg"
+          sortOrder={sortOrder}
+          onSortChange={setSortOrder}
         />
 
         {error && (
@@ -271,7 +274,7 @@ export default function TCGCollection() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 overflow-visible">
-              {cards.map((card) => {
+              {sortedCards.map((card) => {
                 const price = getCardPrice(card);
                 return (
                   <GlassCard

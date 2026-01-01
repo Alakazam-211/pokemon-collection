@@ -230,8 +230,8 @@ export default function FilterBar({
               </div>
             )}
 
-            {/* Sort Order (for Collection) */}
-            {variant === "collection" && sortOrder !== undefined && onSortChange && (
+            {/* Sort Order */}
+            {sortOrder !== undefined && onSortChange && (
               <div>
                 <label className="block text-sm font-medium text-[var(--glass-black-dark)] mb-2">
                   Sort By
@@ -241,15 +241,28 @@ export default function FilterBar({
                   onChange={(e) => onSortChange(e.target.value)}
                   className="glass-input-enhanced w-full px-3 py-2.5 sm:py-2 rounded-lg text-sm min-h-[44px]"
                 >
-                  <option value="recently-added">🕐 Recently Added</option>
-                  <option value="alphabetical">🔤 Alphabetical (A-Z)</option>
-                  <option value="card-number">🔢 Card Number</option>
-                  <option value="set-name">📦 Set Name</option>
-                  <option value="rarity">✨ Rarity</option>
-                  <option value="value-high-low">💰 Value (High to Low)</option>
-                  <option value="value-low-high">💰 Value (Low to High)</option>
-                  <option value="total-value-high-low">💎 Total Value (High to Low)</option>
-                  <option value="total-value-low-high">💎 Total Value (Low to High)</option>
+                  {variant === "collection" ? (
+                    <>
+                      <option value="recently-added">🕐 Recently Added</option>
+                      <option value="alphabetical">🔤 Alphabetical (A-Z)</option>
+                      <option value="card-number">🔢 Card Number</option>
+                      <option value="set-name">📦 Set Name</option>
+                      <option value="rarity">✨ Rarity</option>
+                      <option value="value-high-low">💰 Value (High to Low)</option>
+                      <option value="value-low-high">💰 Value (Low to High)</option>
+                      <option value="total-value-high-low">💎 Total Value (High to Low)</option>
+                      <option value="total-value-low-high">💎 Total Value (Low to High)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="alphabetical">🔤 Alphabetical (A-Z)</option>
+                      <option value="card-number">🔢 Card Number</option>
+                      <option value="set-name">📦 Set Name</option>
+                      <option value="rarity">✨ Rarity</option>
+                      <option value="price-high-low">💰 Price (High to Low)</option>
+                      <option value="price-low-high">💰 Price (Low to High)</option>
+                    </>
+                  )}
                 </select>
               </div>
             )}
