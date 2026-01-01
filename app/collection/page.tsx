@@ -203,11 +203,35 @@ export default function CollectionExplorer() {
       
       const priceInfo: CatalogPriceInfo = await response.json();
       
-      // Check if catalog has market price (required per user preference)
-      if (priceInfo.prices.market === null || priceInfo.prices.market === undefined) {
-        setSyncError('No market price available in catalog for this card');
+      // Check if catalog has any pricing data
+      const hasAnyPrice = priceInfo.prices.market !== null || 
+                         priceInfo.prices.mid !== null || 
+                         priceInfo.prices.low !== null ||
+                         priceInfo.prices.holofoilMarket !== null ||
+                         priceInfo.prices.holofoilMid !== null;
+      
+      if (!hasAnyPrice) {
+        setSyncError('No price data available in catalog for this card');
         setIsSyncing(false);
         return;
+      }
+      
+      // Prefer market price, but allow fallback to mid or low if market isn't available
+      if (priceInfo.prices.market === null || priceInfo.prices.market === undefined) {
+        // Use mid price as fallback, or low, or holofoil market
+        const fallbackPrice = priceInfo.prices.mid || 
+                             priceInfo.prices.low || 
+                             priceInfo.prices.holofoilMarket ||
+                             priceInfo.prices.holofoilMid;
+        
+        if (fallbackPrice !== null && fallbackPrice !== undefined) {
+          // Update the market price to the fallback for display
+          priceInfo.prices.market = fallbackPrice;
+        } else {
+          setSyncError('No market price available in catalog for this card');
+          setIsSyncing(false);
+          return;
+        }
       }
       
       setCatalogPriceInfo(priceInfo);

@@ -20,10 +20,12 @@ export async function GET(
     }
     
     // Find matching catalog card
+    // Pass rarity to improve matching accuracy
     const catalogCard = await findMatchingCatalogCard(
       card.name,
       card.set,
-      card.number || null
+      card.number || null,
+      card.rarity || null
     );
     
     if (!catalogCard) {

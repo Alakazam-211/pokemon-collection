@@ -119,18 +119,19 @@ export async function getCatalogCardById(id: string): Promise<TCGCatalogCard | n
 
 /**
  * Find a matching catalog card for a collection card
- * Matches by name and set_name (required), optionally by number
+ * Matches by name and set_name (required), optionally by number and rarity
+ * Prioritizes cards with pricing data
  * Returns the best match with pricing information
  */
 export async function findMatchingCatalogCard(
   name: string,
   set: string,
-  number?: string | null
+  number?: string | null,
+  rarity?: string | null
 ): Promise<TCGCatalogCard | null> {
   try {
-    let query;
-    
     // If number is provided, try exact match first (name + set + number)
+    // Prioritize cards with pricing data
     if (number && number.trim()) {
       const { rows: exactRows } = await sql`
         SELECT 
@@ -139,11 +140,20 @@ export async function findMatchingCatalogCard(
           national_pokedex_numbers, images_small, images_large,
           tcgplayer_url, cardmarket_url,
           price_normal_market, price_normal_mid, price_normal_low,
-          price_holofoil_market, price_holofoil_mid
+          price_holofoil_market, price_holofoil_mid,
+          CASE 
+            WHEN price_normal_market IS NOT NULL THEN 1
+            WHEN price_normal_mid IS NOT NULL THEN 2
+            WHEN price_normal_low IS NOT NULL THEN 3
+            WHEN price_holofoil_market IS NOT NULL THEN 4
+            WHEN price_holofoil_mid IS NOT NULL THEN 5
+            ELSE 6
+          END as price_priority
         FROM tcg_catalog
         WHERE LOWER(name) = LOWER(${name})
           AND LOWER(set_name) = LOWER(${set})
           AND number = ${number}
+        ORDER BY price_priority ASC
         LIMIT 1
       `;
       
@@ -152,23 +162,40 @@ export async function findMatchingCatalogCard(
       }
     }
     
-    // Fallback to name + set match (without number)
-    const { rows } = await sql`
+    // Build query for name + set match, prioritizing pricing data
+    // Also consider rarity if provided
+    let whereClause = `LOWER(name) = LOWER($1) AND LOWER(set_name) = LOWER($2)`;
+    const queryParams: any[] = [name, set];
+    
+    if (rarity && rarity.trim()) {
+      whereClause += ` AND LOWER(rarity) = LOWER($${queryParams.length + 1})`;
+      queryParams.push(rarity);
+    }
+    
+    const { rows } = await sql.query(`
       SELECT 
         id, name, supertype, subtypes, hp, types,
         set_id, set_name, set_series, number, artist, rarity, flavor_text,
         national_pokedex_numbers, images_small, images_large,
         tcgplayer_url, cardmarket_url,
         price_normal_market, price_normal_mid, price_normal_low,
-        price_holofoil_market, price_holofoil_mid
+        price_holofoil_market, price_holofoil_mid,
+        CASE 
+          WHEN price_normal_market IS NOT NULL THEN 1
+          WHEN price_normal_mid IS NOT NULL THEN 2
+          WHEN price_normal_low IS NOT NULL THEN 3
+          WHEN price_holofoil_market IS NOT NULL THEN 4
+          WHEN price_holofoil_mid IS NOT NULL THEN 5
+          ELSE 6
+        END as price_priority
       FROM tcg_catalog
-      WHERE LOWER(name) = LOWER(${name})
-        AND LOWER(set_name) = LOWER(${set})
+      WHERE ${whereClause}
       ORDER BY 
+        price_priority ASC,
         CASE WHEN number IS NOT NULL THEN 1 ELSE 2 END,
         number ASC
       LIMIT 1
-    `;
+    `, queryParams);
     
     if (rows.length === 0) {
       return null;
