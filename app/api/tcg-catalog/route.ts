@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const typeFilter = searchParams.get('type') || '';
     const offset = (page - 1) * limit;
 
-    // Build query with filters using sql template tag
+    // Build query with filters
     let query;
     let countQuery;
 
@@ -56,39 +56,38 @@ export async function GET(request: NextRequest) {
                       (typeFilter && typeFilter.trim());
 
     if (hasFilters) {
-      
-      // Build conditions dynamically - collect all filter values first
-      const filterValues: any[] = [];
-      const conditions: string[] = [];
+      // Build conditions dynamically using sql.query() to avoid nested template issues
+      // This matches the approach used in /api/cards/route.ts which works correctly
+      const whereParts: string[] = [];
+      const queryParams: any[] = [];
       
       if (searchPattern) {
-        conditions.push(`(name ILIKE $${filterValues.length + 1} OR set_name ILIKE $${filterValues.length + 1} OR rarity ILIKE $${filterValues.length + 1})`);
-        filterValues.push(searchPattern, searchPattern, searchPattern);
+        whereParts.push(`(name ILIKE $${queryParams.length + 1} OR set_name ILIKE $${queryParams.length + 1} OR rarity ILIKE $${queryParams.length + 1})`);
+        queryParams.push(searchPattern, searchPattern, searchPattern);
       }
       if (setFilter && setFilter.trim()) {
-        conditions.push(`set_name = $${filterValues.length + 1}`);
-        filterValues.push(setFilter);
+        whereParts.push(`set_name = $${queryParams.length + 1}`);
+        queryParams.push(setFilter);
       }
       if (rarityFilter && rarityFilter.trim()) {
-        conditions.push(`rarity = $${filterValues.length + 1}`);
-        filterValues.push(rarityFilter);
+        whereParts.push(`rarity = $${queryParams.length + 1}`);
+        queryParams.push(rarityFilter);
       }
       if (seriesFilter && seriesFilter.trim()) {
-        conditions.push(`set_series = $${filterValues.length + 1}`);
-        filterValues.push(seriesFilter);
+        whereParts.push(`set_series = $${queryParams.length + 1}`);
+        queryParams.push(seriesFilter);
       }
       if (typeFilter && typeFilter.trim()) {
-        conditions.push(`types IS NOT NULL AND $${filterValues.length + 1} IN (SELECT unnest(types))`);
-        filterValues.push(typeFilter);
+        // Use ANY(types) for array comparison - same as collection page
+        whereParts.push(`types IS NOT NULL AND $${queryParams.length + 1} = ANY(types)`);
+        queryParams.push(typeFilter);
       }
       
-      const whereClause = conditions.join(' AND ');
+      const whereClause = whereParts.length > 0 ? `WHERE ${whereParts.join(' AND ')}` : '';
+      const allParams = [...queryParams, limit, offset];
       
-      // Build query using sql template tag with conditional WHERE conditions
-      // This properly handles parameterization without type inference issues
-      if (filterValues.length === 3 && searchPattern && !setFilter && !rarityFilter && !seriesFilter && !typeFilter) {
-        // Only search pattern - use sql template tag directly
-        query = sql`
+      // Use sql.query() which properly handles parameterization
+      query = sql.query(`
           SELECT 
             id, name, supertype, subtypes, hp, types,
             set_id, set_name, set_series, number, artist, rarity, flavor_text,
@@ -97,84 +96,17 @@ export async function GET(request: NextRequest) {
             price_normal_market, price_normal_mid, price_normal_low,
             price_holofoil_market, price_holofoil_mid
           FROM tcg_catalog
-          WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
+        ${whereClause}
           ORDER BY name ASC, set_name ASC, number ASC
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `;
-        countQuery = sql`
+        LIMIT $${queryParams.length + 1}
+        OFFSET $${queryParams.length + 2}
+      `, allParams);
+      
+      countQuery = sql.query(`
           SELECT COUNT(*) as total
           FROM tcg_catalog
-          WHERE (name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})
-        `;
-      } else {
-        // Multiple filters - build conditions using sql template tag
-        // Collect conditions as sql fragments
-        const sqlConditions: any[] = [];
-        
-        if (searchPattern) {
-          sqlConditions.push(sql`(name ILIKE ${searchPattern} OR set_name ILIKE ${searchPattern} OR rarity ILIKE ${searchPattern})`);
-        }
-        if (setFilter && setFilter.trim()) {
-          sqlConditions.push(sql`set_name = ${setFilter}`);
-        }
-        if (rarityFilter && rarityFilter.trim()) {
-          sqlConditions.push(sql`rarity = ${rarityFilter}`);
-        }
-        if (seriesFilter && seriesFilter.trim()) {
-          sqlConditions.push(sql`set_series = ${seriesFilter}`);
-        }
-        if (typeFilter && typeFilter.trim()) {
-          sqlConditions.push(sql`types IS NOT NULL AND ${typeFilter} = ANY(types)`);
-        }
-        
-        // Safety check: if no conditions, fall back to no-filter query
-        if (sqlConditions.length === 0) {
-          query = sql`
-            SELECT 
-              id, name, supertype, subtypes, hp, types,
-              set_id, set_name, set_series, number, artist, rarity, flavor_text,
-              national_pokedex_numbers, images_small, images_large,
-              tcgplayer_url, cardmarket_url,
-              price_normal_market, price_normal_mid, price_normal_low,
-              price_holofoil_market, price_holofoil_mid
-            FROM tcg_catalog
-            ORDER BY name ASC, set_name ASC, number ASC
-            LIMIT ${limit}
-            OFFSET ${offset}
-          `;
-          countQuery = sql`
-            SELECT COUNT(*) as total
-            FROM tcg_catalog
-          `;
-        } else {
-        // Combine conditions with AND
-        const whereCondition = sqlConditions.reduce((acc, condition, idx) => 
-          idx === 0 ? condition : sql`${acc} AND ${condition}`
-        );
-        
-        query = sql`
-          SELECT 
-            id, name, supertype, subtypes, hp, types,
-            set_id, set_name, set_series, number, artist, rarity, flavor_text,
-            national_pokedex_numbers, images_small, images_large,
-            tcgplayer_url, cardmarket_url,
-            price_normal_market, price_normal_mid, price_normal_low,
-            price_holofoil_market, price_holofoil_mid
-          FROM tcg_catalog
-          WHERE ${whereCondition}
-          ORDER BY name ASC, set_name ASC, number ASC
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `;
-        
-        countQuery = sql`
-          SELECT COUNT(*) as total
-          FROM tcg_catalog
-          WHERE ${whereCondition}
-        `;
-        }
-      }
+        ${whereClause}
+      `, queryParams);
     } else {
       query = sql`
         SELECT 

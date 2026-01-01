@@ -126,7 +126,14 @@ export default function TCGCollection() {
       if (reset) {
         setCards(data.data);
       } else {
-        setCards(prev => [...prev, ...data.data]);
+        // Deduplicate cards by id when appending to prevent duplicate keys
+        setCards(prev => {
+          const existingIds = new Set(prev.map(card => card.id));
+          const newCards = data.data.filter(card => !existingIds.has(card.id));
+          return [...prev, ...newCards];
+        });
+        // Increment page number for next load
+        pageRef.current += 1;
       }
       
       setTotalPages(data.pagination.totalPages);
