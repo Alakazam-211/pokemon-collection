@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PokemonCard, CollectionStats } from "@/types/pokemon";
 import AddCardForm from "@/components/AddCardForm";
 import CardList from "@/components/CardList";
@@ -18,12 +18,7 @@ export default function Home() {
     uniqueCards: 0,
   });
 
-  // Load cards from API on mount
-  useEffect(() => {
-    fetchCards();
-  }, []);
-
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -34,14 +29,21 @@ export default function Home() {
         throw new Error(errorMessage);
       }
       const data = await response.json();
-      setCards(data.data || data || []);
+      const newCards = data.data || data || [];
+      setCards(newCards);
     } catch (err) {
       console.error("Error fetching cards:", err);
       setError(err instanceof Error ? err.message : "Failed to load cards. Please check your database connection.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load cards from API on mount
+  useEffect(() => {
+    fetchCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - fetchCards is stable and we only want to run once on mount
 
   // Update stats whenever cards change
   useEffect(() => {
@@ -49,10 +51,18 @@ export default function Home() {
     const totalValue = cards.reduce((sum, card) => sum + card.value * card.quantity, 0);
     const uniqueCards = cards.length;
 
-    setStats({
-      totalCards,
-      totalValue,
-      uniqueCards,
+    setStats((prevStats) => {
+      const newStats = {
+        totalCards,
+        totalValue,
+        uniqueCards,
+      };
+      
+      // Only return new object if stats actually changed
+      if (JSON.stringify(newStats) === JSON.stringify(prevStats)) {
+        return prevStats;
+      }
+      return newStats;
     });
   }, [cards]);
 
@@ -187,4 +197,3 @@ export default function Home() {
     </main>
   );
 }
-
